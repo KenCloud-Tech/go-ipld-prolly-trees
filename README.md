@@ -1,2 +1,2 @@
 # go-prolly-tree
-golang implementation of merkel style verifiable search tree
+golang implementation of probabilistic merkle search trees for IPLD
