@@ -1,0 +1,60 @@
+type ProllyNode struct {
+    # chunk strategy about how the prolly tree is built. We should mutate the tree with the same strategy, or may lead to
+    # worst performance and even unknown error, it's the same with merge action
+    Config &ChunkConfig
+    # 0 for leaf nodes, and add 1 for parent level
+    Level Int
+    # raw keys(keys/values input from users) for leaf node. For branch nodes, the key is last key in the child node,
+    # if data(k/v pairs) are sorted and increase, it's the biggest key in the child node
+	keys [Bytes]
+	# For branch nodes, they are cids of children nodes. For leaf nodes, they are null
+	links nullable [&ProllyNode]
+    # raw data input by users
+    values nullable [Any]
+} representation tuple
+
+
+type WeibullThresholdConfig struct{
+    # shape parameter, default value is 4
+    K           Float
+    # scale parameter(λ), default value is 4096
+    L           Float
+} representation tuple
+
+
+# rollingHashSplitter is a nodeSplitter that makes chunk boundary decisions using
+# a rolling value hasher that processes Item pairs in a byte-wise fashion.
+#
+# rollingHashSplitter uses a dynamic hash pattern designed to constrain the chunk
+# Size distribution by reducing the likelihood of forming very large or very small
+# chunks. As the Size of the current chunk grows, rollingHashSplitter changes the
+# target pattern to make it easier to match. The result is a chunk Size distribution
+# that is closer to a binomial distribution, rather than geometric.
+type RollingHashConfig struct{
+    rollingHashWindow   Int
+} representation tuple
+
+type PrefixThresholdConfig struct {
+    chunkingFactor Int
+} representation tuple
+
+# Chunk Config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
+# the splitter
+type ChunkConfig struct{
+    chunkStrategy ChunkStrategy
+    minChunkSize Int
+    maxChunkSize Int
+    strategy      strategy
+} representation tuple
+
+type strategy union {
+    | WeibullThresholdConfig    "weibull"
+    | RollingHashConfig         "rollinghash"
+    | PrefixThresholdConfig     "prefix"
+} representation keyed
+
+type ChunkStrategy enum {
+  | PrefixThreshold
+  | WeibullThreshold
+  | RollingHash
+} representation string
