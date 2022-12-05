@@ -6,7 +6,7 @@ import (
 	"go-ipld-prolly-trees/pkg/tree/schema"
 )
 
-// todo: clean orphan node regularly?
+// todo: maybe we need clean orphan nodes regularly?
 type NodeStore interface {
 	WriteNode(ctx context.Context, nd *schema.ProllyNode, prefix *cid.Prefix) (cid.Cid, error)
 	ReadNode(ctx context.Context, c cid.Cid) (*schema.ProllyNode, error)

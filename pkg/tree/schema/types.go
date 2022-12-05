@@ -7,14 +7,14 @@ import (
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 )
 
-func (nd *ProllyNode) ToNode() (n ipld.Node, err error) {
+func (n *ProllyNode) ToNode() (nd ipld.Node, err error) {
 	// TODO: remove the panic recovery once IPLD bindnode is stabilized.
 	defer func() {
 		if r := recover(); r != nil {
 			err = toError(r)
 		}
 	}()
-	n = bindnode.Wrap(nd, ProllyNodePrototype.Type()).Representation()
+	nd = bindnode.Wrap(n, ProllyNodePrototype.Type()).Representation()
 	return
 }
 
