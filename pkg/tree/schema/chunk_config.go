@@ -19,8 +19,8 @@ const (
 // the splitter
 type ChunkConfig struct {
 	ChunkStrategy ChunkStrategy
-	MinChunkSize  uint32
-	MaxChunkSize  uint32
+	MinChunkSize  int
+	MaxChunkSize  int
 	Strategy      strategy
 }
 
