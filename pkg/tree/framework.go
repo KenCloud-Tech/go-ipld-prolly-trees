@@ -107,6 +107,9 @@ func newLevelBuilder(ctx context.Context, level int, ns types.NodeStore, config 
 }
 
 func (lb *LevelBuilder) append(ctx context.Context, key []byte, leafValue ipld.Node, link *cid.Cid) (bool, error) {
+	if lb.done {
+		return false, fmt.Errorf("append pair in done builder")
+	}
 	if lb.level == 0 && leafValue == nil || lb.level > 0 && !link.Defined() {
 		panic("mismatched input type with level")
 	}
@@ -191,7 +194,7 @@ func (lb *LevelBuilder) createParentLevelBuilder(ctx context.Context) error {
 		parentCursor = lb.cursor.parentCursor
 	}
 
-	lb.parentBuilder = newLevelBuilder(ctx, lb.level+1, lb.nodeStore, lb.config, lb.framework.configCid, parentCursor, lb.framework)
+	lb.parentBuilder = newLevelBuilder(ctx, lb.level+1, lb.nodeStore, lb.config, lb.nodeBuffer.configCid, parentCursor, lb.framework)
 	lb.framework.builders = append(lb.framework.builders, lb.parentBuilder)
 	return err
 }
@@ -252,11 +255,8 @@ func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuilder) 
 }
 
 type Framework struct {
-	done      bool
-	builders  []*LevelBuilder
-	config    *ChunkConfig
-	configCid cid.Cid
-	ns        types.NodeStore
+	done     bool
+	builders []*LevelBuilder
 }
 
 func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur *Cursor) (*Framework, error,
@@ -266,11 +266,7 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur
 		return nil, err
 	}
 
-	framework := &Framework{
-		config:    cfg,
-		configCid: cfgCid,
-		ns:        ns,
-	}
+	framework := &Framework{}
 
 	leafBuilder := newLevelBuilder(ctx, 0, ns, cfg, cfgCid, cur, framework)
 
@@ -282,16 +278,36 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur
 }
 
 func (fw *Framework) Append(ctx context.Context, key []byte, val ipld.Node) (bool, error) {
-
+	if fw.done {
+		return false, fmt.Errorf("append data in done framework")
+	}
 	return fw.builders[0].append(ctx, key, val, nil)
 }
 
-func (fw *Framework) Finish(ctx context.Context) (*ProllyNode, cid.Cid, error) {
+// AppendBatch should only use in data input, cannot be used in rebalance procedure
+func (fw *Framework) AppendBatch(ctx context.Context, keys [][]byte, vals []ipld.Node) error {
+	if fw.done {
+		return fmt.Errorf("append data in done framework")
+	}
+	if len(keys) != len(vals) {
+		return fmt.Errorf("keys and vals must have the same length")
+	}
+	for i := range keys {
+		_, err := fw.Append(ctx, keys[i], vals[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (fw *Framework) finish(ctx context.Context) (*ProllyNode, cid.Cid, error) {
 	if fw.done {
 		return nil, cid.Undef, fmt.Errorf("repeated action")
 	}
-	var i int
+	fw.done = true
 
+	var i int
 	// finish all level builders and get the root node and cid
 	for {
 		// builders may be created while loop, so we need check it every time
@@ -309,4 +325,22 @@ func (fw *Framework) Finish(ctx context.Context) (*ProllyNode, cid.Cid, error) {
 
 		i++
 	}
+}
+
+func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, error) {
+	root, rootCid, err := fw.finish(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tree := &ProllyTree{
+		rootCid:    rootCid,
+		root:       root,
+		ns:         fw.builders[0].nodeStore,
+		treeConfig: fw.builders[0].config,
+	}
+
+	fw.builders = nil
+
+	return tree, nil
 }

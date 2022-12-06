@@ -16,19 +16,10 @@ func TestProllyTreeBuild(t *testing.T) {
 	assert.NoError(t, err)
 
 	testKeys, testVals := RandomTestData(100000)
-	for i := 0; i < 100000; i++ {
-		_, err = framwork.Append(ctx, testKeys[i], testVals[i])
-		assert.NoError(t, err)
-	}
-	root, rootCid, err := framwork.Finish(ctx)
+	err = framwork.AppendBatch(ctx, testKeys, testVals)
 	assert.NoError(t, err)
-
-	tree := &ProllyTree{
-		rootCid:    rootCid,
-		root:       root,
-		ns:         ns,
-		treeConfig: cfg,
-	}
+	tree, err := framwork.BuildTree(ctx)
+	assert.NoError(t, err)
 
 	for i := 0; i < 100000; i++ {
 		idx := rand.Intn(100000)
