@@ -24,8 +24,8 @@ var DefaultLinkProto = cidlink.LinkPrototype{
 	},
 }
 
-type storeConfig struct {
-	cacheSize int
+type StoreConfig struct {
+	CacheSize int
 }
 
 var _ types.NodeStore = &NodeStore{}
@@ -36,18 +36,18 @@ type NodeStore struct {
 	cache *lru.Cache
 }
 
-func NewNodeStore(bs blockstore.Blockstore, cfg *storeConfig) (*NodeStore, error) {
+func NewNodeStore(bs blockstore.Blockstore, cfg *StoreConfig) (*NodeStore, error) {
 	lsys := linksystem.MkLinkSystem(bs)
 	ns := &NodeStore{
 		bs:   bs,
 		lsys: &lsys,
 	}
 	if cfg == nil {
-		return ns, nil
+		cfg = &StoreConfig{}
 	}
-	if cfg.cacheSize != 0 {
+	if cfg.CacheSize != 0 {
 		var err error
-		ns.cache, err = lru.New(cfg.cacheSize)
+		ns.cache, err = lru.New(cfg.CacheSize)
 		if err != nil {
 			return nil, err
 		}

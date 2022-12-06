@@ -36,13 +36,27 @@ func (n *ProllyNode) KeyIndex(item []byte, cp CompareFunc) int {
 		} else if cp(midKey, item) > 0 {
 			r = mid - 1
 		} else {
-			//  avoid loop
-			if l == r || r == l+1 {
+			if l == r {
 				return l
 			}
-			// not mid + 1 because we need the closest key not larger than item, if l = mid + 1, key[l] and key[r] may
-			// be both larger than item
+			if r == l+1 {
+				if cp(n.Keys[r], item) <= 0 {
+					return r
+				}
+				return l
+			}
 			l = mid
+
+			////  avoid loop
+			//if l == r || r == l+1 {
+			//	if cp(n.Keys[r], item) == 0 {
+			//		return r
+			//	}
+			//	return l
+			//}
+			//// not mid + 1 because we need the closest key not larger than item, if l = mid + 1, key[l] and key[r] may
+			//// be both larger than item
+			//l = mid
 		}
 	}
 
@@ -60,4 +74,11 @@ func (n *ProllyNode) GetIdxKey(i int) []byte {
 
 func (n *ProllyNode) GetIdxValue(i int) ipld.Node {
 	return n.Values[i]
+}
+
+func (n *ProllyNode) GetIdxLink(i int) cid.Cid {
+	if n.Level == 0 {
+		panic("invalid action")
+	}
+	return n.Links[i]
 }

@@ -60,7 +60,6 @@ func (nb *nodeBuilder) build() *ProllyNode {
 
 type LevelBuilder struct {
 	config        *ChunkConfig
-	configCid     cid.Cid
 	level         int
 	cursor        *Cursor
 	nodeBuffer    *nodeBuilder
@@ -71,7 +70,7 @@ type LevelBuilder struct {
 	done          bool
 }
 
-func newLevelBuilder(ctx context.Context, level int, ns types.NodeStore, config *ChunkConfig, configCid cid.Cid, cur *Cursor) *LevelBuilder {
+func newLevelBuilder(ctx context.Context, level int, ns types.NodeStore, config *ChunkConfig, configCid cid.Cid, cur *Cursor, frameWork *Framework) *LevelBuilder {
 	if config == nil {
 		panic("nil config")
 	}
@@ -101,6 +100,7 @@ func newLevelBuilder(ctx context.Context, level int, ns types.NodeStore, config 
 		nodeBuffer: nb,
 		nodeStore:  ns,
 		splitter:   splitter,
+		framework:  frameWork,
 	}
 
 	return lb
@@ -144,19 +144,27 @@ func (lb *LevelBuilder) append(ctx context.Context, key []byte, leafValue ipld.N
 	return false, nil
 }
 
-func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
-	if lb.nodeBuffer.count() <= 0 {
-		return fmt.Errorf("invalid items count")
+func buildAndSaveNode(ctx context.Context, nb *nodeBuilder, prefix *cid.Prefix, ns types.NodeStore) (*ProllyNode, cid.Cid, error) {
+	if !(nb.count() > 0) {
+		return nil, cid.Undef, fmt.Errorf("invalid nodeBuilder to build")
 	}
-	node := lb.nodeBuffer.build()
-	addr, err := lb.nodeStore.WriteNode(ctx, node, nil)
+	node := nb.build()
+	addr, err := ns.WriteNode(ctx, node, prefix)
+	if err != nil {
+		return nil, cid.Undef, err
+	}
+	return node, addr, nil
+}
+
+func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
+	node, addr, err := buildAndSaveNode(ctx, lb.nodeBuffer, nil, lb.nodeStore)
 	if err != nil {
 		return err
 	}
 
-	key := node.GetIdxKey(node.ItemCount() - 1)
-	lastKey := make([]byte, len(key))
-	copy(lastKey, key)
+	key := node.GetIdxKey(0)
+	firstKey := make([]byte, len(key))
+	copy(firstKey, key)
 
 	if lb.parentBuilder == nil {
 		err = lb.createParentLevelBuilder(ctx)
@@ -165,7 +173,7 @@ func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
 		}
 	}
 
-	_, err = lb.parentBuilder.append(ctx, lastKey, nil, &addr)
+	_, err = lb.parentBuilder.append(ctx, firstKey, nil, &addr)
 	lb.splitter.Reset()
 
 	return nil
@@ -183,8 +191,64 @@ func (lb *LevelBuilder) createParentLevelBuilder(ctx context.Context) error {
 		parentCursor = lb.cursor.parentCursor
 	}
 
-	lb.parentBuilder = newLevelBuilder(ctx, lb.level+1, lb.nodeStore, lb.config, lb.configCid, parentCursor)
+	lb.parentBuilder = newLevelBuilder(ctx, lb.level+1, lb.nodeStore, lb.config, lb.framework.configCid, parentCursor, lb.framework)
+	lb.framework.builders = append(lb.framework.builders, lb.parentBuilder)
 	return err
+}
+
+func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid, error) {
+	if lb.done {
+		return false, nil, cid.Undef, fmt.Errorf("repeated action")
+	}
+	lb.done = true
+
+	// todo: deal with the cursor first
+
+	// if top level, get root node and cid
+	if lb.parentBuilder == nil {
+		// ending condition
+		if lb.level == 0 || lb.nodeBuffer.count() > 1 {
+			node := lb.nodeBuffer.build()
+			addr, err := lb.nodeStore.WriteNode(ctx, node, nil)
+			if err != nil {
+				return false, nil, cid.Undef, err
+			}
+			return true, node, addr, nil
+		} else {
+			// top level but only a node with one pair, we should get canonical root
+			trueRoot, rootCid, err := getCanonicalRoot(ctx, lb.nodeStore, lb.nodeBuffer)
+			if err != nil {
+				return false, nil, cid.Undef, err
+			}
+			return true, trueRoot, rootCid, nil
+		}
+	}
+	// if not top level, finish pairs in buffer
+	if lb.nodeBuffer.count() > 0 {
+		if err := lb.splitBoundary(ctx); err != nil {
+			return false, nil, cid.Undef, err
+		}
+	}
+	// not arrive ending condition, so there is no root
+	return false, nil, cid.Undef, nil
+}
+
+func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuilder) (*ProllyNode, cid.Cid, error) {
+	if nb.count() != 1 {
+		return nil, cid.Undef, fmt.Errorf("invalid nodeBuilder count")
+	}
+	childCid := nb.links[0]
+
+	for {
+		child, err := ns.ReadNode(ctx, childCid)
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+		if child.IsLeaf() || child.ItemCount() > 1 {
+			return child, childCid, nil
+		}
+		childCid = child.GetIdxLink(0)
+	}
 }
 
 type Framework struct {
@@ -202,20 +266,47 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur
 		return nil, err
 	}
 
-	leafBuilder := newLevelBuilder(ctx, 0, ns, cfg, cfgCid, nil)
+	framework := &Framework{
+		config:    cfg,
+		configCid: cfgCid,
+		ns:        ns,
+	}
+
+	leafBuilder := newLevelBuilder(ctx, 0, ns, cfg, cfgCid, cur, framework)
 
 	builders := make([]*LevelBuilder, 0)
 	builders = append(builders, leafBuilder)
 
-	return &Framework{
-		builders:  builders,
-		config:    cfg,
-		configCid: cfgCid,
-		ns:        ns,
-	}, nil
+	framework.builders = builders
+	return framework, nil
 }
 
 func (fw *Framework) Append(ctx context.Context, key []byte, val ipld.Node) (bool, error) {
 
 	return fw.builders[0].append(ctx, key, val, nil)
+}
+
+func (fw *Framework) Finish(ctx context.Context) (*ProllyNode, cid.Cid, error) {
+	if fw.done {
+		return nil, cid.Undef, fmt.Errorf("repeated action")
+	}
+	var i int
+
+	// finish all level builders and get the root node and cid
+	for {
+		// builders may be created while loop, so we need check it every time
+		if i >= len(fw.builders) {
+			return nil, cid.Undef, fmt.Errorf("finish all builders but not get root")
+		}
+
+		over, root, rootCid, err := fw.builders[i].finish(ctx)
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+		if over {
+			return root, rootCid, nil
+		}
+
+		i++
+	}
 }
