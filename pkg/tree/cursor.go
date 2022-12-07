@@ -30,13 +30,13 @@ func (cur *Cursor) IsValid() bool {
 }
 
 func (cur *Cursor) GetLink() cid.Cid {
-	if cur.node.IsLeaf() {
+	if cur.node.IsLeafNode() {
 		panic("can not get link from leaf node")
 	}
 	if !cur.IsValid() {
 		panic("get link from invalid cursor")
 	}
-	return cur.node.Links[cur.idx]
+	return getCidFromIpldNode(cur.node.Values[cur.idx])
 }
 
 func CursorAtItem(n *ProllyNode, item []byte, cp CompareFunc, ns types.NodeStore) (*Cursor, error) {
@@ -46,7 +46,7 @@ func CursorAtItem(n *ProllyNode, item []byte, cp CompareFunc, ns types.NodeStore
 		parentCursor: nil,
 	}
 	for {
-		if cur.node.IsLeaf() {
+		if cur.node.IsLeafNode() {
 			break
 		}
 		childLink := cur.GetLink()
@@ -103,7 +103,7 @@ func (cur *Cursor) GetKey() []byte {
 }
 
 func (cur *Cursor) GetValue() ipld.Node {
-	if !cur.node.IsLeaf() {
+	if !cur.node.IsLeafNode() {
 		panic("get value from branch node")
 	}
 	if !cur.IsValid() {

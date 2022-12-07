@@ -1,22 +1,23 @@
 package schema
 
 import (
+	"fmt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 )
 
 type CompareFunc func(left, right []byte) int
 
 type ProllyNode struct {
 	Config cid.Cid
-	Level  int
+	IsLeaf bool
 	Keys   [][]byte
-	Links  []cid.Cid
 	Values []ipld.Node
 }
 
-func (n *ProllyNode) IsLeaf() bool {
-	return n.Level == 0
+func (n *ProllyNode) IsLeafNode() bool {
+	return n.IsLeaf
 }
 
 func (n *ProllyNode) KeyIndex(item []byte, cp CompareFunc) int {
@@ -46,17 +47,6 @@ func (n *ProllyNode) KeyIndex(item []byte, cp CompareFunc) int {
 				return l
 			}
 			l = mid
-
-			////  avoid loop
-			//if l == r || r == l+1 {
-			//	if cp(n.Keys[r], item) == 0 {
-			//		return r
-			//	}
-			//	return l
-			//}
-			//// not mid + 1 because we need the closest key not larger than item, if l = mid + 1, key[l] and key[r] may
-			//// be both larger than item
-			//l = mid
 		}
 	}
 
@@ -77,8 +67,12 @@ func (n *ProllyNode) GetIdxValue(i int) ipld.Node {
 }
 
 func (n *ProllyNode) GetIdxLink(i int) cid.Cid {
-	if n.Level == 0 {
+	if n.IsLeaf {
 		panic("invalid action")
 	}
-	return n.Links[i]
+	link, err := n.Values[i].AsLink()
+	if err != nil {
+		panic(fmt.Errorf("invalid value, expected cidlink, got: %v", n.Values[i]))
+	}
+	return link.(cidlink.Link).Cid
 }

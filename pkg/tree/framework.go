@@ -7,6 +7,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	. "go-ipld-prolly-trees/pkg/tree/schema"
 	"go-ipld-prolly-trees/pkg/tree/types"
 )
@@ -14,8 +16,7 @@ import (
 type nodeBuilder struct {
 	keys      [][]byte
 	values    []ipld.Node
-	links     []cid.Cid
-	level     int
+	isLeaf    bool
 	configCid cid.Cid
 }
 
@@ -28,39 +29,27 @@ func (nb *nodeBuilder) addLeafPair(key []byte, val ipld.Node) {
 	nb.values = append(nb.values, val)
 }
 
-func (nb *nodeBuilder) addBranchPair(key, val []byte) {
-	nb.keys = append(nb.keys, key)
-	_, c, err := cid.CidFromBytes(val)
-	if err != nil {
-		panic(err)
-	}
-	nb.links = append(nb.links, c)
-}
-
 func (nb *nodeBuilder) clean() {
 	nb.keys = nil
 	nb.values = nil
-	nb.links = nil
 }
 
 func (nb *nodeBuilder) build() *ProllyNode {
 	n := &ProllyNode{
 		Keys:   nb.keys,
-		Level:  nb.level,
+		IsLeaf: nb.isLeaf,
 		Config: nb.configCid,
 	}
-	if nb.level == 0 {
-		n.Values = nb.values
-	} else {
-		n.Links = nb.links
-	}
+
+	n.Values = nb.values
+
 	nb.clean()
 	return n
 }
 
 type LevelBuilder struct {
 	config        *ChunkConfig
-	level         int
+	isLeaf        bool
 	cursor        *Cursor
 	nodeBuffer    *nodeBuilder
 	parentBuilder *LevelBuilder
@@ -70,7 +59,7 @@ type LevelBuilder struct {
 	done          bool
 }
 
-func newLevelBuilder(ctx context.Context, level int, ns types.NodeStore, config *ChunkConfig, configCid cid.Cid, cur *Cursor, frameWork *Framework) *LevelBuilder {
+func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, config *ChunkConfig, configCid cid.Cid, cur *Cursor, frameWork *Framework) *LevelBuilder {
 	if config == nil {
 		panic("nil config")
 	}
@@ -89,13 +78,13 @@ func newLevelBuilder(ctx context.Context, level int, ns types.NodeStore, config 
 	}
 
 	nb := &nodeBuilder{
-		level:     level,
+		isLeaf:    isLeaf,
 		configCid: configCid,
 	}
 
 	lb := &LevelBuilder{
 		config:     config,
-		level:      level,
+		isLeaf:     isLeaf,
 		cursor:     cur,
 		nodeBuffer: nb,
 		nodeStore:  ns,
@@ -106,29 +95,28 @@ func newLevelBuilder(ctx context.Context, level int, ns types.NodeStore, config 
 	return lb
 }
 
-func (lb *LevelBuilder) append(ctx context.Context, key []byte, leafValue ipld.Node, link *cid.Cid) (bool, error) {
+func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node) (bool, error) {
 	if lb.done {
 		return false, fmt.Errorf("append pair in done builder")
 	}
-	if lb.level == 0 && leafValue == nil || lb.level > 0 && !link.Defined() {
-		panic("mismatched input type with level")
-	}
+
 	var valBytes []byte
-	if lb.level == 0 {
+	if lb.isLeaf {
 		valBuffer := new(bytes.Buffer)
 		// maybe configurable
-		err := dagcbor.Encode(leafValue, valBuffer)
+		err := dagcbor.Encode(value, valBuffer)
 		if err != nil {
 			return false, err
 		}
 		valBytes = valBuffer.Bytes()
-		lb.nodeBuffer.addLeafPair(key, leafValue)
-	} else if lb.level > 0 {
-		valBytes = link.Bytes()
-		lb.nodeBuffer.addBranchPair(key, valBytes)
 	} else {
-		panic("invalid level")
+		link, err := value.AsLink()
+		if err != nil {
+			return false, err
+		}
+		valBytes = link.(cidlink.Link).Bytes()
 	}
+	lb.nodeBuffer.addLeafPair(key, value)
 
 	err := lb.splitter.Append(key, valBytes)
 	if err != nil {
@@ -137,7 +125,7 @@ func (lb *LevelBuilder) append(ctx context.Context, key []byte, leafValue ipld.N
 
 	// boundary is true , but it's branch node with only one pair k/v, so we can not split here.
 	// if split in the state, it will generate boundary infinitely(its parent node will generate in the same state too)
-	if lb.splitter.IsBoundary() && !(lb.level != 0 && lb.nodeBuffer.count() == 1) {
+	if lb.splitter.IsBoundary() && !(!lb.isLeaf && lb.nodeBuffer.count() == 1) {
 		err = lb.splitBoundary(ctx)
 		if err != nil {
 			return false, err
@@ -176,7 +164,8 @@ func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
 		}
 	}
 
-	_, err = lb.parentBuilder.append(ctx, firstKey, nil, &addr)
+	vnode := basicnode.NewLink(cidlink.Link{Cid: addr})
+	_, err = lb.parentBuilder.append(ctx, firstKey, vnode)
 	lb.splitter.Reset()
 
 	return nil
@@ -194,7 +183,7 @@ func (lb *LevelBuilder) createParentLevelBuilder(ctx context.Context) error {
 		parentCursor = lb.cursor.parentCursor
 	}
 
-	lb.parentBuilder = newLevelBuilder(ctx, lb.level+1, lb.nodeStore, lb.config, lb.nodeBuffer.configCid, parentCursor, lb.framework)
+	lb.parentBuilder = newLevelBuilder(ctx, false, lb.nodeStore, lb.config, lb.nodeBuffer.configCid, parentCursor, lb.framework)
 	lb.framework.builders = append(lb.framework.builders, lb.parentBuilder)
 	return err
 }
@@ -218,7 +207,7 @@ func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid,
 		// if top level, get root node and cid
 
 		// ending condition
-		if lb.level == 0 || lb.nodeBuffer.count() > 1 {
+		if lb.isLeaf || lb.nodeBuffer.count() > 1 {
 			node, addr, err := buildAndSaveNode(ctx, lb.nodeBuffer, nil, lb.nodeStore)
 			if err != nil {
 				return false, nil, cid.Undef, err
@@ -238,18 +227,26 @@ func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid,
 	return false, nil, cid.Undef, nil
 }
 
+func getCidFromIpldNode(n ipld.Node) cid.Cid {
+	link, err := n.AsLink()
+	if err != nil {
+		panic(fmt.Errorf("invalid value, expected cidlink, got: %v", n))
+	}
+	return link.(cidlink.Link).Cid
+}
+
 func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuilder) (*ProllyNode, cid.Cid, error) {
 	if nb.count() != 1 {
 		return nil, cid.Undef, fmt.Errorf("invalid nodeBuilder count")
 	}
-	childCid := nb.links[0]
+	childCid := getCidFromIpldNode(nb.values[0])
 
 	for {
 		child, err := ns.ReadNode(ctx, childCid)
 		if err != nil {
 			return nil, cid.Undef, err
 		}
-		if child.IsLeaf() || child.ItemCount() > 1 {
+		if child.IsLeafNode() || child.ItemCount() > 1 {
 			return child, childCid, nil
 		}
 		childCid = child.GetIdxLink(0)
@@ -270,7 +267,7 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur
 
 	framework := &Framework{}
 
-	leafBuilder := newLevelBuilder(ctx, 0, ns, cfg, cfgCid, cur, framework)
+	leafBuilder := newLevelBuilder(ctx, true, ns, cfg, cfgCid, cur, framework)
 
 	builders := make([]*LevelBuilder, 0)
 	builders = append(builders, leafBuilder)
@@ -283,7 +280,7 @@ func (fw *Framework) Append(ctx context.Context, key []byte, val ipld.Node) (boo
 	if fw.done {
 		return false, fmt.Errorf("append data in done framework")
 	}
-	return fw.builders[0].append(ctx, key, val, nil)
+	return fw.builders[0].append(ctx, key, val)
 }
 
 // AppendBatch should only use in data input, cannot be used in rebalance procedure

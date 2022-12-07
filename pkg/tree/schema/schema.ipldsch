@@ -3,16 +3,19 @@ type ProllyNode struct {
     # worst performance and even unknown error, it's the same with merge action
     Config &ChunkConfig
     # 0 for leaf nodes, and add 1 for parent level
-    Level Int
+    isLeaf Bool
     # raw keys(keys/values input from users) for leaf node. For branch nodes, the key is last key in the child node,
     # if data(k/v pairs) are sorted and increase, it's the biggest key in the child node
 	keys [Bytes]
-	# For branch nodes, they are cids of children nodes. For leaf nodes, they are null
-	links nullable [&ProllyNode]
-    # raw data input by users
     values nullable [Any]
 } representation tuple
 
+
+type ProllyRoot struct{
+    RootCid &ProllyNode
+    Config ChunkConfig
+
+}
 
 type WeibullThresholdConfig struct{
     # shape parameter, default value is 4

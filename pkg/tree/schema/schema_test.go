@@ -20,15 +20,13 @@ var defaultLinkProto = cidlink.LinkPrototype{
 }
 
 func TestGenIPLDNode(t *testing.T) {
-	cid1, _ := defaultLinkProto.Sum([]byte("123v"))
 
 	vnode := basicnode.NewBytes([]byte("12sdsada"))
 
 	nd := &ProllyNode{
 		Keys:   [][]byte{[]byte("123k")},
 		Values: []ipld.Node{vnode},
-		Links:  []cid.Cid{cid1},
-		Level:  0,
+		IsLeaf: true,
 		Config: cid.Undef,
 	}
 

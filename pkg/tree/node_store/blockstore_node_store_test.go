@@ -2,7 +2,6 @@ package nodestore
 
 import (
 	"context"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-ipld-prime"
@@ -17,8 +16,6 @@ func TestIPLDNodeStoreLoad(t *testing.T) {
 	ns, err := NewNodeStore(bs, &StoreConfig{CacheSize: 1 << 10})
 	assert.NoError(t, err)
 
-	c1, err := DefaultLinkProto.Sum([]byte("link1"))
-	assert.NoError(t, err)
 	cfg := schema.DefaultChunkConfig()
 	cfgCid, err := ns.WriteTreeConfig(context.Background(), cfg, nil)
 	assert.NoError(t, err)
@@ -27,8 +24,7 @@ func TestIPLDNodeStoreLoad(t *testing.T) {
 	nd := &schema.ProllyNode{
 		Keys:   [][]byte{[]byte("123k")},
 		Values: []ipld.Node{vnode},
-		Links:  []cid.Cid{c1},
-		Level:  199998,
+		IsLeaf: true,
 		Config: cfgCid,
 	}
 
@@ -45,7 +41,7 @@ func TestIPLDNodeStoreLoad(t *testing.T) {
 
 	assert.Equal(t, nd.Keys, inode.Keys)
 	assert.Equal(t, nd.Values, inode.Values)
-	assert.Equal(t, nd.Level, inode.Level)
+	assert.Equal(t, nd.IsLeafNode(), inode.IsLeafNode())
 	assert.Equal(t, nd.Config, inode.Config)
 	assert.True(t, _cfg.Equal(cfg))
 }
