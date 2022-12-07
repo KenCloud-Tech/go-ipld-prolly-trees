@@ -207,12 +207,19 @@ func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid,
 
 	// todo: deal with the cursor first
 
-	// if top level, get root node and cid
-	if lb.parentBuilder == nil {
+	// if not top level, finish pairs in buffer(if remaining)
+	if lb.parentBuilder != nil {
+		if lb.nodeBuffer.count() > 0 {
+			if err := lb.splitBoundary(ctx); err != nil {
+				return false, nil, cid.Undef, err
+			}
+		}
+	} else {
+		// if top level, get root node and cid
+
 		// ending condition
 		if lb.level == 0 || lb.nodeBuffer.count() > 1 {
-			node := lb.nodeBuffer.build()
-			addr, err := lb.nodeStore.WriteNode(ctx, node, nil)
+			node, addr, err := buildAndSaveNode(ctx, lb.nodeBuffer, nil, lb.nodeStore)
 			if err != nil {
 				return false, nil, cid.Undef, err
 			}
@@ -226,12 +233,7 @@ func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid,
 			return true, trueRoot, rootCid, nil
 		}
 	}
-	// if not top level, finish pairs in buffer
-	if lb.nodeBuffer.count() > 0 {
-		if err := lb.splitBoundary(ctx); err != nil {
-			return false, nil, cid.Undef, err
-		}
-	}
+
 	// not arrive ending condition, so there is no root
 	return false, nil, cid.Undef, nil
 }
