@@ -2,14 +2,17 @@ type ProllyNode struct {
     # 0 for leaf nodes, and add 1 for parent level
     isLeaf Bool
     # raw keys(keys/values input from users) for leaf node. For branch nodes, the key is last key in the child node,
-    # if data(k/v pairs) are sorted and increase, it's the biggest key in the child node
+    # first key in the child node
 	keys [Bytes]
-    values nullable [Any]
+	# input data from users for leaf nodes, Link for branch nodes
+    values [Any]
 } representation tuple
 
 
 type ProllyRoot struct{
+    # root ProllyNode of tree
     RootCid &ProllyNode
+    # config about the tree
     Config ChunkConfig
 }
 
