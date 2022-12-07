@@ -27,7 +27,6 @@ func TestGenIPLDNode(t *testing.T) {
 		Keys:   [][]byte{[]byte("123k")},
 		Values: []ipld.Node{vnode},
 		IsLeaf: true,
-		Config: cid.Undef,
 	}
 
 	_, err := nd.ToNode()

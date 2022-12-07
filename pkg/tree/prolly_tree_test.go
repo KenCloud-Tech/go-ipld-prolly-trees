@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestProllyTreeBuild(t *testing.T) {
+func TestProllyTreeBuildAndReload(t *testing.T) {
 	ctx := context.Background()
 	ns := testMemNodeStore()
 	cfg := schema.DefaultChunkConfig()
@@ -18,7 +18,7 @@ func TestProllyTreeBuild(t *testing.T) {
 	testKeys, testVals := RandomTestData(100000)
 	err = framwork.AppendBatch(ctx, testKeys, testVals)
 	assert.NoError(t, err)
-	tree, err := framwork.BuildTree(ctx)
+	tree, rootCid, err := framwork.BuildTree(ctx)
 	assert.NoError(t, err)
 
 	for i := 0; i < 100000; i++ {
@@ -29,4 +29,16 @@ func TestProllyTreeBuild(t *testing.T) {
 		trueVnode, _ := testVals[idx].AsBytes()
 		assert.Equal(t, vnode, trueVnode)
 	}
+
+	reloadTree, err := LoadProllyTreeFromRootCid(rootCid, ns)
+	assert.NoError(t, err)
+	for i := 0; i < 100000; i++ {
+		idx := rand.Intn(100000)
+		val, err := reloadTree.Get(testKeys[idx])
+		assert.NoError(t, err)
+		vnode, _ := val.AsBytes()
+		trueVnode, _ := testVals[idx].AsBytes()
+		assert.Equal(t, vnode, trueVnode)
+	}
+
 }

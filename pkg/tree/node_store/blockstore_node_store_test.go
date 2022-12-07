@@ -16,8 +16,6 @@ func TestIPLDNodeStoreLoad(t *testing.T) {
 	ns, err := NewNodeStore(bs, &StoreConfig{CacheSize: 1 << 10})
 	assert.NoError(t, err)
 
-	cfg := schema.DefaultChunkConfig()
-	cfgCid, err := ns.WriteTreeConfig(context.Background(), cfg, nil)
 	assert.NoError(t, err)
 
 	vnode := basicnode.NewBytes([]byte("123v"))
@@ -25,7 +23,6 @@ func TestIPLDNodeStoreLoad(t *testing.T) {
 		Keys:   [][]byte{[]byte("123k")},
 		Values: []ipld.Node{vnode},
 		IsLeaf: true,
-		Config: cfgCid,
 	}
 
 	ctx := context.Background()
@@ -36,12 +33,9 @@ func TestIPLDNodeStoreLoad(t *testing.T) {
 	inode, err := ns.ReadNode(ctx, c)
 	assert.NoError(t, err)
 
-	_cfg, err := ns.ReadTreeConfig(context.Background(), inode.Config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, nd.Keys, inode.Keys)
 	assert.Equal(t, nd.Values, inode.Values)
 	assert.Equal(t, nd.IsLeafNode(), inode.IsLeafNode())
-	assert.Equal(t, nd.Config, inode.Config)
-	assert.True(t, _cfg.Equal(cfg))
 }

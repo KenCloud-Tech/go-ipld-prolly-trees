@@ -104,6 +104,55 @@ func (ns *NodeStore) ReadNode(ctx context.Context, c cid.Cid) (*schema.ProllyNod
 	return inode, nil
 }
 
+func (ns *NodeStore) WriteRoot(ctx context.Context, root *schema.ProllyRoot, prefix *cid.Prefix) (cid.Cid, error) {
+	var linkProto cidlink.LinkPrototype
+	if prefix == nil {
+		// default linkproto
+		linkProto = DefaultLinkProto
+	} else {
+		linkProto = cidlink.LinkPrototype{Prefix: *prefix}
+	}
+	ipldNode, err := root.ToNode()
+	if err != nil {
+		return cid.Undef, err
+	}
+	lnk, err := ns.lsys.Store(ipld.LinkContext{Ctx: ctx}, linkProto, ipldNode)
+	if err != nil {
+		return cid.Undef, err
+	}
+	c := lnk.(cidlink.Link).Cid
+
+	go func() {
+		if ns.cache != nil {
+			ns.cache.Add(c, root)
+		}
+	}()
+
+	return c, nil
+}
+
+func (ns *NodeStore) ReadRoot(ctx context.Context, c cid.Cid) (*schema.ProllyRoot, error) {
+	var inCache bool
+	if ns.cache != nil {
+		var res interface{}
+		res, inCache = ns.cache.Get(c)
+		if inCache {
+			return res.(*schema.ProllyRoot), nil
+		}
+	}
+	nd, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, schema.ProllyRootPrototype.Representation())
+	if err != nil {
+		return nil, err
+	}
+
+	root, err := schema.UnwrapProllyRoot(nd)
+	if err != nil {
+		return nil, err
+	}
+
+	return root, nil
+}
+
 func (ns *NodeStore) ReadTreeConfig(ctx context.Context, c cid.Cid) (*schema.ChunkConfig, error) {
 	icfg, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, schema.ChunkConfigPrototype.Representation())
 	if err != nil {

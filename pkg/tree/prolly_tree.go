@@ -2,6 +2,7 @@ package tree
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
@@ -18,6 +19,28 @@ type ProllyTree struct {
 	root       *ProllyNode
 	ns         types.NodeStore
 	treeConfig *ChunkConfig
+}
+
+func LoadProllyTreeFromRootNode(rootNode *ProllyRoot, ns types.NodeStore) (*ProllyTree, error) {
+	prollyRootNode, err := ns.ReadNode(context.Background(), rootNode.RootCid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ProllyTree{
+		rootCid:    rootNode.RootCid,
+		root:       prollyRootNode,
+		ns:         ns,
+		treeConfig: &rootNode.Config,
+	}, nil
+}
+
+func LoadProllyTreeFromRootCid(rootCid cid.Cid, ns types.NodeStore) (*ProllyTree, error) {
+	rootNode, err := ns.ReadRoot(context.Background(), rootCid)
+	if err != nil {
+		return nil, err
+	}
+	return LoadProllyTreeFromRootNode(rootNode, ns)
 }
 
 func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {

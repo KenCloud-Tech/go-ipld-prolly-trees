@@ -10,7 +10,6 @@ import (
 type CompareFunc func(left, right []byte) int
 
 type ProllyNode struct {
-	Config cid.Cid
 	IsLeaf bool
 	Keys   [][]byte
 	Values []ipld.Node
