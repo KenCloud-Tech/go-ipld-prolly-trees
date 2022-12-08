@@ -10,9 +10,12 @@ import (
 type NodeStore interface {
 	WriteNode(ctx context.Context, nd *schema.ProllyNode, prefix *cid.Prefix) (cid.Cid, error)
 	ReadNode(ctx context.Context, c cid.Cid) (*schema.ProllyNode, error)
+
 	WriteRoot(ctx context.Context, root *schema.ProllyRoot, prefix *cid.Prefix) (cid.Cid, error)
 	ReadRoot(ctx context.Context, c cid.Cid) (*schema.ProllyRoot, error)
-	WriteTreeConfig(ctx context.Context, cfg *schema.ChunkConfig, prefix *cid.Prefix) (cid.Cid, error)
-	ReadTreeConfig(ctx context.Context, c cid.Cid) (*schema.ChunkConfig, error)
+
+	//WriteTreeConfig(ctx context.Context, cfg *schema.ChunkConfig, prefix *cid.Prefix) (cid.Cid, error)
+	//ReadTreeConfig(ctx context.Context, c cid.Cid) (*schema.ChunkConfig, error)
+
 	Close()
 }

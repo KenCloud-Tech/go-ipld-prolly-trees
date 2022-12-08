@@ -153,41 +153,41 @@ func (ns *NodeStore) ReadRoot(ctx context.Context, c cid.Cid) (*schema.ProllyRoo
 	return root, nil
 }
 
-func (ns *NodeStore) ReadTreeConfig(ctx context.Context, c cid.Cid) (*schema.ChunkConfig, error) {
-	icfg, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, schema.ChunkConfigPrototype.Representation())
-	if err != nil {
-		return nil, err
-	}
-
-	cfg, err := schema.UnwrapChunkConfig(icfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-func (ns *NodeStore) WriteTreeConfig(ctx context.Context, cfg *schema.ChunkConfig, prefix *cid.Prefix) (cid.Cid, error) {
-	var linkProto cidlink.LinkPrototype
-	if prefix == nil {
-		// default linkproto
-		linkProto = DefaultLinkProto
-	} else {
-		linkProto = cidlink.LinkPrototype{Prefix: *prefix}
-	}
-
-	ipldNode, err := cfg.ToNode()
-	if err != nil {
-		return cid.Undef, err
-	}
-	lnk, err := ns.lsys.Store(ipld.LinkContext{Ctx: ctx}, linkProto, ipldNode)
-	if err != nil {
-		return cid.Undef, err
-	}
-	c := lnk.(cidlink.Link).Cid
-
-	return c, nil
-}
+//func (ns *NodeStore) ReadTreeConfig(ctx context.Context, c cid.Cid) (*schema.ChunkConfig, error) {
+//	icfg, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, schema.ChunkConfigPrototype.Representation())
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	cfg, err := schema.UnwrapChunkConfig(icfg)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return cfg, nil
+//}
+//
+//func (ns *NodeStore) WriteTreeConfig(ctx context.Context, cfg *schema.ChunkConfig, prefix *cid.Prefix) (cid.Cid, error) {
+//	var linkProto cidlink.LinkPrototype
+//	if prefix == nil {
+//		// default linkproto
+//		linkProto = DefaultLinkProto
+//	} else {
+//		linkProto = cidlink.LinkPrototype{Prefix: *prefix}
+//	}
+//
+//	ipldNode, err := cfg.ToNode()
+//	if err != nil {
+//		return cid.Undef, err
+//	}
+//	lnk, err := ns.lsys.Store(ipld.LinkContext{Ctx: ctx}, linkProto, ipldNode)
+//	if err != nil {
+//		return cid.Undef, err
+//	}
+//	c := lnk.(cidlink.Link).Cid
+//
+//	return c, nil
+//}
 
 func (ns *NodeStore) Close() {
 }

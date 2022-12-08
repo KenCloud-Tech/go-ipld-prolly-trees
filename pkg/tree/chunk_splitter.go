@@ -36,11 +36,11 @@ func (ws *WeibullSplitter) Append(key, val []byte) error {
 	ws.totalItemsSize += itemSize
 
 	// can not split
-	if ws.totalItemsSize < ws.config.MinChunkSize {
+	if ws.totalItemsSize < ws.config.MinNodeSize {
 		return nil
 	}
 	// must split
-	if ws.totalItemsSize > ws.config.MaxChunkSize {
+	if ws.totalItemsSize > ws.config.MaxNodeSize {
 		ws.isBoundary = true
 		return nil
 	}

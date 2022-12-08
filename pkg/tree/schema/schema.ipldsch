@@ -8,6 +8,16 @@ type ProllyNode struct {
     values [Any]
 } representation tuple
 
+type TProllyNode struct {
+    # 0 for leaf nodes, and add 1 for parent level
+    isLeaf Bool
+    pairs [Entry]
+} representation tuple
+
+type Entry struct{
+    key Bytes
+    value Any
+} representation tuple
 
 type ProllyRoot struct{
     # root ProllyNode of tree
@@ -44,8 +54,8 @@ type PrefixThresholdConfig struct {
 # the splitter
 type ChunkConfig struct{
     chunkStrategy ChunkStrategy
-    minChunkSize Int
-    maxChunkSize Int
+    minNodeSize Int
+    maxNodeSize Int
     strategy      strategy
 } representation tuple
 

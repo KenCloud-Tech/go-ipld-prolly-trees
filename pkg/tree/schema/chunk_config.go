@@ -19,15 +19,15 @@ const (
 // the splitter
 type ChunkConfig struct {
 	ChunkStrategy ChunkStrategy
-	MinChunkSize  int
-	MaxChunkSize  int
+	MinNodeSize   int
+	MaxNodeSize   int
 	Strategy      strategy
 }
 
 func (cfg *ChunkConfig) Equal(_cfg *ChunkConfig) bool {
 	if cfg.ChunkStrategy != _cfg.ChunkStrategy ||
-		cfg.MinChunkSize != _cfg.MinChunkSize ||
-		cfg.MaxChunkSize != _cfg.MaxChunkSize {
+		cfg.MinNodeSize != _cfg.MinNodeSize ||
+		cfg.MaxNodeSize != _cfg.MaxNodeSize {
 		return false
 	}
 	return cfg.Strategy.Equal(&_cfg.Strategy, cfg.ChunkStrategy)
@@ -35,8 +35,8 @@ func (cfg *ChunkConfig) Equal(_cfg *ChunkConfig) bool {
 
 func DefaultChunkConfig() *ChunkConfig {
 	return &ChunkConfig{
-		MinChunkSize:  DefaultMinChunkSize,
-		MaxChunkSize:  DefaultMaxChunkSize,
+		MinNodeSize:   DefaultMinChunkSize,
+		MaxNodeSize:   DefaultMaxChunkSize,
 		ChunkStrategy: WeibullThreshold,
 		Strategy: strategy{Weilbull: &WeibullThresholdConfig{
 			4, 4096,
