@@ -4,67 +4,69 @@ import "fmt"
 
 const (
 	DefaultMinChunkSize = 1 << 9
-	DefaultMaxChunkSize = 1 << 14
+	DefaultMaxChunkSize = 1 << 12
 )
 
 type ChunkStrategy string
 
 const (
-	WeibullThreshold ChunkStrategy = "WeibullThreshold"
-	RollingHash      ChunkStrategy = "RollingHash"
-	PrefixThreshold  ChunkStrategy = "PrefixThreshold"
+	PrefixThreshold  byte = byte(0)
+	WeibullThreshold byte = byte(1)
+	RollingHash      byte = byte(2)
 )
 
-// Chunk Config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
+// Chunk ConfigCid for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
 // the splitter
 type ChunkConfig struct {
-	ChunkStrategy ChunkStrategy
-	MinNodeSize   int
-	MaxNodeSize   int
-	Strategy      strategy
+	StrategyType   byte
+	MinNodeSize    int
+	MaxNodeSize    int
+	MaxPairsInNode int
+	Strategy       strategy
 }
 
 func (cfg *ChunkConfig) Equal(_cfg *ChunkConfig) bool {
-	if cfg.ChunkStrategy != _cfg.ChunkStrategy ||
+	if cfg.StrategyType != _cfg.StrategyType ||
 		cfg.MinNodeSize != _cfg.MinNodeSize ||
 		cfg.MaxNodeSize != _cfg.MaxNodeSize {
 		return false
 	}
-	return cfg.Strategy.Equal(&_cfg.Strategy, cfg.ChunkStrategy)
+	return cfg.Strategy.Equal(&_cfg.Strategy, cfg.StrategyType)
 }
 
 func DefaultChunkConfig() *ChunkConfig {
 	return &ChunkConfig{
-		MinNodeSize:   DefaultMinChunkSize,
-		MaxNodeSize:   DefaultMaxChunkSize,
-		ChunkStrategy: WeibullThreshold,
-		Strategy: strategy{Weilbull: &WeibullThresholdConfig{
-			4, 4096,
+		MinNodeSize:    DefaultMinChunkSize,
+		MaxNodeSize:    DefaultMaxChunkSize,
+		MaxPairsInNode: 1000,
+		StrategyType:   PrefixThreshold,
+		Strategy: strategy{Prefix: &PrefixThresholdConfig{
+			ChunkingFactor: 10,
 		}},
 	}
 }
 
 type strategy struct {
-	Weilbull    *WeibullThresholdConfig
-	RollingHash *RollingHashConfig
-	Prefix      *PrefixThresholdConfig
+	//Weilbull    *WeibullThresholdConfig
+	//RollingHash *RollingHashConfig
+	Prefix *PrefixThresholdConfig
 }
 
-func (sg *strategy) Equal(_sg *strategy, name ChunkStrategy) bool {
+func (sg *strategy) Equal(_sg *strategy, strategyType byte) bool {
 	var strCfg strategyConfig
 	var _strCfg strategyConfig
-	switch name {
-	case WeibullThreshold:
-		strCfg = sg.Weilbull
-		_strCfg = _sg.Weilbull
+	switch strategyType {
+	//case WeibullThreshold:
+	//	strCfg = sg.Weilbull
+	//	_strCfg = _sg.Weilbull
 	case PrefixThreshold:
 		strCfg = sg.Prefix
 		_strCfg = _sg.Prefix
-	case RollingHash:
-		strCfg = sg.RollingHash
-		_strCfg = _sg.RollingHash
+	//case RollingHash:
+	//	strCfg = sg.RollingHash
+	//	_strCfg = _sg.RollingHash
 	default:
-		panic(fmt.Errorf("invalid strategy: %s", name))
+		panic(fmt.Errorf("invalid strategy: %v", strategyType))
 	}
 	return strCfg.Equal(_strCfg)
 }
@@ -92,7 +94,7 @@ func (wtc *WeibullThresholdConfig) Equal(sc strategyConfig) bool {
 }
 
 type PrefixThresholdConfig struct {
-	chunkingFactor int
+	ChunkingFactor int
 }
 
 func (ptc *PrefixThresholdConfig) Equal(sc strategyConfig) bool {
@@ -100,7 +102,7 @@ func (ptc *PrefixThresholdConfig) Equal(sc strategyConfig) bool {
 	if !ok {
 		return false
 	}
-	if ptc.chunkingFactor == _ptc.chunkingFactor {
+	if ptc.ChunkingFactor == _ptc.ChunkingFactor {
 		return true
 	}
 	return false

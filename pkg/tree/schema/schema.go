@@ -18,8 +18,6 @@ var (
 
 	ProllyRootPrototype schema.TypedPrototype
 
-	TProllyNodePrototype schema.TypedPrototype
-
 	//go:embed schema.ipldsch
 	schemaBytes []byte
 )
@@ -30,7 +28,6 @@ func init() {
 		panic(fmt.Errorf("failed to load schema: %w", err))
 	}
 	ProllyNodePrototype = bindnode.Prototype(&ProllyNode{}, typeSystem.TypeByName("ProllyNode"))
-	TProllyNodePrototype = bindnode.Prototype(&TProllyNode{}, typeSystem.TypeByName("TProllyNode"))
 	ProllyRootPrototype = bindnode.Prototype(&ProllyRoot{}, typeSystem.TypeByName("ProllyRoot"))
 	ChunkConfigPrototype = bindnode.Prototype(&ChunkConfig{}, typeSystem.TypeByName("ChunkConfig"))
 }

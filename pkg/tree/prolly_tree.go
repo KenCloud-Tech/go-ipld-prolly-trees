@@ -26,12 +26,16 @@ func LoadProllyTreeFromRootNode(rootNode *ProllyRoot, ns types.NodeStore) (*Prol
 	if err != nil {
 		return nil, err
 	}
+	config, err := ns.ReadTreeConfig(context.Background(), rootNode.ConfigCid)
+	if err != nil {
+		return nil, err
+	}
 
 	return &ProllyTree{
 		rootCid:    rootNode.RootCid,
 		root:       prollyRootNode,
 		ns:         ns,
-		treeConfig: &rootNode.Config,
+		treeConfig: config,
 	}, nil
 }
 

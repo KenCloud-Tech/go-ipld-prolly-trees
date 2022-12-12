@@ -62,15 +62,7 @@ func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, confi
 		panic("nil config")
 	}
 
-	var splitter Splitter
-	switch config.ChunkStrategy {
-	case WeibullThreshold:
-		splitter = &WeibullSplitter{
-			config: config,
-		}
-	default:
-		panic(fmt.Errorf("unsupported chunk strategy: %s", config.ChunkStrategy))
-	}
+	splitter := NewSplitterFromConfig(config)
 
 	nb := &nodeBuilder{
 		isLeaf: isLeaf,
@@ -248,14 +240,19 @@ func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuilder) 
 }
 
 type Framework struct {
-	done     bool
-	builders []*LevelBuilder
+	done      bool
+	configCid cid.Cid
+	builders  []*LevelBuilder
 }
 
 func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur *Cursor) (*Framework, error,
 ) {
+	configCid, err := ns.WriteTreeConfig(ctx, cfg, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	framework := &Framework{}
+	framework := &Framework{configCid: configCid}
 
 	leafBuilder := newLevelBuilder(ctx, true, ns, cfg, cur, framework)
 
@@ -310,8 +307,8 @@ func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyRoot, erro
 		}
 		if over {
 			root := &ProllyRoot{
-				RootCid: rootCid,
-				Config:  *fw.builders[0].config,
+				RootCid:   rootCid,
+				ConfigCid: fw.configCid,
 			}
 			return rootNode, root, nil
 		}
@@ -334,7 +331,7 @@ func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, cid.Cid, error
 		rootCid:    rootNode.RootCid,
 		root:       rootProllyNode,
 		ns:         fw.builders[0].nodeStore,
-		treeConfig: &rootNode.Config,
+		treeConfig: fw.builders[0].config,
 	}
 
 	fw.builders = nil
