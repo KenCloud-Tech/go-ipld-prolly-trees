@@ -76,6 +76,8 @@ func (p *PrefixSplitter) Append(key, val []byte) error {
 }
 
 func (p *PrefixSplitter) Reset() {
+	p.totalBytesSize = 0
+	p.totalPairsNumber = 0
 	p.isBoundary = false
 }
 

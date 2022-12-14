@@ -15,6 +15,7 @@ var (
 )
 
 type ProllyTree struct {
+	treeCid    cid.Cid
 	rootCid    cid.Cid
 	root       *ProllyNode
 	ns         types.NodeStore
@@ -78,7 +79,7 @@ func (pt *ProllyTree) Search(prefix []byte) (*SearchIterator, error) {
 
 		iter.ReceivePair(key, val)
 
-		err = cur.AdvanceCursor()
+		err = cur.Advance()
 		if err != nil {
 			return nil, err
 		}
@@ -89,4 +90,42 @@ func (pt *ProllyTree) Search(prefix []byte) (*SearchIterator, error) {
 	}
 
 	return iter, nil
+}
+
+func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error {
+	cur, err := CursorAtItem(pt.root, key, DefaultCompareFunc, pt.ns)
+	if err != nil {
+		return err
+	}
+	framework, err := NewFramework(ctx, pt.ns, pt.treeConfig, cur)
+	if err != nil {
+		return err
+	}
+	if cur.IsValid() {
+		// modify
+		if DefaultCompareFunc(cur.GetKey(), key) == 0 {
+			err := framework.Append(ctx, key, val)
+			if err != nil {
+				return err
+			}
+			err = cur.Advance()
+			if err != nil {
+				return err
+			}
+		} else {
+			//add new pair
+			err := framework.Append(ctx, key, val)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	newTree, err := framework.BuildTree(ctx)
+	if err != nil {
+		return err
+	}
+	pt.root = newTree.root
+	pt.rootCid = newTree.rootCid
+	pt.treeCid = newTree.treeCid
+	return nil
 }

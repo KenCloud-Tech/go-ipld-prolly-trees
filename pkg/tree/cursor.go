@@ -12,10 +12,10 @@ import (
 var DefaultCompareFunc CompareFunc = bytes.Compare
 
 type Cursor struct {
-	node         *ProllyNode
-	idx          int
-	ns           types.NodeStore
-	parentCursor *Cursor
+	node   *ProllyNode
+	idx    int
+	ns     types.NodeStore
+	parent *Cursor
 }
 
 func (cur *Cursor) IsValid() bool {
@@ -27,6 +27,10 @@ func (cur *Cursor) IsValid() bool {
 		return false
 	}
 	return true
+}
+
+func (cur *Cursor) IsAtEnd() bool {
+	return cur.idx == cur.node.ItemCount()-1
 }
 
 func (cur *Cursor) GetLink() cid.Cid {
@@ -41,9 +45,10 @@ func (cur *Cursor) GetLink() cid.Cid {
 
 func CursorAtItem(n *ProllyNode, item []byte, cp CompareFunc, ns types.NodeStore) (*Cursor, error) {
 	cur := &Cursor{
-		node:         n,
-		idx:          n.KeyIndex(item, cp),
-		parentCursor: nil,
+		node:   n,
+		idx:    n.KeyIndex(item, cp),
+		ns:     ns,
+		parent: nil,
 	}
 	for {
 		if cur.node.IsLeafNode() {
@@ -57,34 +62,35 @@ func CursorAtItem(n *ProllyNode, item []byte, cp CompareFunc, ns types.NodeStore
 
 		parentCur := cur
 		cur = &Cursor{
-			node:         node,
-			idx:          node.KeyIndex(item, cp),
-			parentCursor: parentCur,
+			node:   node,
+			idx:    node.KeyIndex(item, cp),
+			parent: parentCur,
+			ns:     ns,
 		}
 	}
 	return cur, nil
 }
 
-func (cur *Cursor) AdvanceCursor() error {
+func (cur *Cursor) Advance() error {
 	l := cur.node.ItemCount()
 	if cur.idx < l-1 {
 		cur.idx++
 		return nil
 	}
-	if cur.parentCursor == nil {
+	if cur.parent == nil {
 		cur.idx = l
 		return nil
 	}
-	err := cur.parentCursor.AdvanceCursor()
+	err := cur.parent.Advance()
 	if err != nil {
 		return err
 	}
-	if !cur.parentCursor.IsValid() {
+	if !cur.parent.IsValid() {
 		cur.idx = l
 		return nil
 	}
 
-	link := cur.parentCursor.GetLink()
+	link := cur.parent.GetLink()
 	nd, err := cur.ns.ReadNode(context.Background(), link)
 	if err != nil {
 		return err
@@ -103,9 +109,6 @@ func (cur *Cursor) GetKey() []byte {
 }
 
 func (cur *Cursor) GetValue() ipld.Node {
-	if !cur.node.IsLeafNode() {
-		panic("get value from branch node")
-	}
 	if !cur.IsValid() {
 		panic("get value from invalid cursor")
 	}

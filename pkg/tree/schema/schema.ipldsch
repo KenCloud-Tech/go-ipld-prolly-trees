@@ -12,7 +12,7 @@ type ProllyRoot struct{
     # root ProllyNode of tree
     RootCid &ProllyNode
     # config about the tree
-    Config &ChunkConfig
+    ConfigCid &ChunkConfig
 }
 
 type PrefixThresholdConfig struct {

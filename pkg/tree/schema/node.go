@@ -29,38 +29,24 @@ func (n *ProllyNode) IsLeafNode() bool {
 	return n.IsLeaf
 }
 
+// KeyIndex finds the index that the closest but not smaller than the item
 func (n *ProllyNode) KeyIndex(item []byte, cp CompareFunc) int {
 	length := len(n.Keys)
 	l, r := 0, length-1
 
-	// edge condition judge
-	if cp(item, n.Keys[r]) >= 0 {
-		return r
-	}
-
-	for l <= r {
+	for l < r {
 		mid := (l + r) / 2
 		midKey := n.Keys[mid]
 		if cp(midKey, item) == 0 {
 			return mid
 		} else if cp(midKey, item) > 0 {
-			r = mid - 1
+			r = mid
 		} else {
-			if l == r {
-				return l
-			}
-			if r == l+1 {
-				if cp(n.Keys[r], item) <= 0 {
-					return r
-				}
-				return l
-			}
-			l = mid
+			l = mid + 1
 		}
 	}
 
-	panic("invalid")
-	return -1
+	return r
 }
 
 func (n *ProllyNode) ItemCount() int {

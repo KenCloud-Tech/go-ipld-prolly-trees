@@ -78,6 +78,13 @@ func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, confi
 		framework:  frameWork,
 	}
 
+	if cur != nil {
+		err := lb.appendEntriesBeforeCursor(ctx)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+
 	return lb
 }
 
@@ -139,9 +146,9 @@ func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
 		return err
 	}
 
-	key := node.GetIdxKey(0)
-	firstKey := make([]byte, len(key))
-	copy(firstKey, key)
+	key := node.GetIdxKey(node.ItemCount() - 1)
+	lastKey := make([]byte, len(key))
+	copy(lastKey, key)
 
 	if lb.parentBuilder == nil {
 		err = lb.createParentLevelBuilder(ctx)
@@ -151,7 +158,7 @@ func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
 	}
 
 	vnode := basicnode.NewLink(cidlink.Link{Cid: addr})
-	_, err = lb.parentBuilder.append(ctx, firstKey, vnode)
+	_, err = lb.parentBuilder.append(ctx, lastKey, vnode)
 	lb.splitter.Reset()
 
 	return nil
@@ -165,8 +172,8 @@ func (lb *LevelBuilder) createParentLevelBuilder(ctx context.Context) error {
 	var err error
 	var parentCursor *Cursor
 
-	if lb.cursor != nil && lb.cursor.parentCursor != nil {
-		parentCursor = lb.cursor.parentCursor
+	if lb.cursor != nil && lb.cursor.parent != nil {
+		parentCursor = lb.cursor.parent
 	}
 
 	lb.parentBuilder = newLevelBuilder(ctx, false, lb.nodeStore, lb.config, parentCursor, lb.framework)
@@ -174,13 +181,73 @@ func (lb *LevelBuilder) createParentLevelBuilder(ctx context.Context) error {
 	return err
 }
 
+func (lb *LevelBuilder) appendEntriesBeforeCursor(ctx context.Context) error {
+	if lb.cursor == nil {
+		panic("invalid action")
+	}
+
+	index := 0
+	for index < lb.cursor.idx {
+		_, err := lb.append(ctx,
+			lb.cursor.node.GetIdxKey(index),
+			lb.cursor.node.GetIdxValue(index),
+		)
+		if err != nil {
+			return err
+		}
+		index++
+	}
+
+	return nil
+}
+
+func (lb *LevelBuilder) appendEntriesAfterCursor(ctx context.Context) error {
+	cur := lb.cursor
+	for lb.cursor.IsValid() {
+		boundaryGenerated, err := lb.append(ctx,
+			cur.GetKey(),
+			cur.GetValue(),
+		)
+		if err != nil {
+			return err
+		}
+		if boundaryGenerated && cur.IsAtEnd() {
+			// same boundary generated in new node
+			break
+		}
+
+		err = cur.Advance()
+		if err != nil {
+			return err
+		}
+	}
+
+	if cur.parent != nil {
+		// the modified path should not append into levelBuilder
+		err := cur.parent.Advance()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid, error) {
 	if lb.done {
 		return false, nil, cid.Undef, fmt.Errorf("repeated action")
 	}
-	lb.done = true
+	defer func() {
+		lb.done = true
+	}()
 
-	// todo: deal with the cursor first
+	// if cursor exists, it means that this is modifying the ProllyTree and rebalance
+	if lb.cursor != nil {
+		err := lb.appendEntriesAfterCursor(ctx)
+		if err != nil {
+			return false, nil, cid.Undef, err
+		}
+	}
 
 	// if not top level, finish pairs in buffer(if remaining)
 	if lb.parentBuilder != nil {
@@ -263,11 +330,12 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur
 	return framework, nil
 }
 
-func (fw *Framework) Append(ctx context.Context, key []byte, val ipld.Node) (bool, error) {
+func (fw *Framework) Append(ctx context.Context, key []byte, val ipld.Node) error {
 	if fw.done {
-		return false, fmt.Errorf("append data in done framework")
+		return fmt.Errorf("append data in done framework")
 	}
-	return fw.builders[0].append(ctx, key, val)
+	_, err := fw.builders[0].append(ctx, key, val)
+	return err
 }
 
 // AppendBatch should only use in data input, cannot be used in rebalance procedure
@@ -279,7 +347,7 @@ func (fw *Framework) AppendBatch(ctx context.Context, keys [][]byte, vals []ipld
 		return fmt.Errorf("keys and vals must have the same length")
 	}
 	for i := range keys {
-		_, err := fw.Append(ctx, keys[i], vals[i])
+		err := fw.Append(ctx, keys[i], vals[i])
 		if err != nil {
 			return err
 		}
@@ -317,17 +385,18 @@ func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyRoot, erro
 	}
 }
 
-func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, cid.Cid, error) {
+func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, error) {
 	rootProllyNode, rootNode, err := fw.finish(ctx)
 	if err != nil {
-		return nil, cid.Undef, err
+		return nil, err
 	}
 	rootNodeCid, err := fw.builders[0].nodeStore.WriteRoot(ctx, rootNode, nil)
 	if err != nil {
-		return nil, cid.Undef, err
+		return nil, err
 	}
 
 	tree := &ProllyTree{
+		treeCid:    rootNodeCid,
 		rootCid:    rootNode.RootCid,
 		root:       rootProllyNode,
 		ns:         fw.builders[0].nodeStore,
@@ -336,5 +405,5 @@ func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, cid.Cid, error
 
 	fw.builders = nil
 
-	return tree, rootNodeCid, nil
+	return tree, nil
 }
