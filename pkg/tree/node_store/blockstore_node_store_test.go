@@ -1,56 +1,101 @@
 package nodestore
 
 import (
+	"bytes"
 	"context"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-ipld-prime"
-	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	_ "github.com/ipld/go-ipld-prime/codec/dagjson"
+	"github.com/ipld/go-ipld-prime/multicodec"
+	"github.com/ipld/go-ipld-prime/node/basicnode"
+	mcodec "github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/assert"
 	"go-ipld-prolly-trees/pkg/tree/schema"
 	"testing"
 )
+
+var prollyNode = &schema.ProllyNode{
+	Keys: [][]byte{
+		[]byte("123k"),
+		[]byte("1234k"),
+	},
+	Values: []ipld.Node{
+		basicnode.NewBytes([]byte("123v")),
+		basicnode.NewBytes([]byte("1234v")),
+	},
+	IsLeaf: true,
+}
 
 func TestIPLDNodeStoreLoad(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	ns, err := NewNodeStore(bs, &StoreConfig{CacheSize: 1 << 10})
 	assert.NoError(t, err)
 
-	assert.NoError(t, err)
-
-	vnode := basicnode.NewBytes([]byte("123v"))
-	nd := &schema.ProllyNode{
-		Keys:   [][]byte{[]byte("123k")},
-		Values: []ipld.Node{vnode},
-		IsLeaf: true,
-	}
-
 	ctx := context.Background()
 
-	c, err := ns.WriteNode(ctx, nd, nil)
+	c, err := ns.WriteNode(ctx, prollyNode, nil)
 	assert.NoError(t, err)
 
 	inode, err := ns.ReadNode(ctx, c)
 	assert.NoError(t, err)
 
+	ipldNd, err := prollyNode.ToNode()
 	assert.NoError(t, err)
 
-	assert.Equal(t, nd.Keys, inode.Keys)
-	assert.Equal(t, nd.Values, inode.Values)
-	assert.Equal(t, nd.IsLeafNode(), inode.IsLeafNode())
+	bk, err := ns.bs.Get(ctx, c)
+	assert.NoError(t, err)
+	t.Log(len(bk.RawData()))
+	t.Log(string(bk.RawData()))
+	buf := new(bytes.Buffer)
+	err = dagcbor.Encode(ipldNd, buf)
+	assert.NoError(t, err)
+	t.Log(len(buf.Bytes()))
+	t.Log(buf.String())
+
+	assert.Equal(t, buf.Len(), len(bk.RawData()))
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, prollyNode.Keys, inode.Keys)
+	assert.Equal(t, prollyNode.Values, inode.Values)
+	assert.Equal(t, prollyNode.IsLeafNode(), inode.IsLeafNode())
 }
 
-func TestIPLD(t *testing.T) {
-	pre := DefaultLinkProto.Prefix.Bytes()
+func TestCidPrefixAndEncoder(t *testing.T) {
+	ns := TestMemNodeStore()
+	ipldNode, err := prollyNode.ToNode()
+	assert.NoError(t, err)
 
-	pre2 := cid.Prefix{
+	prefix := schema.DefaultLinkProto.Prefix
+
+	_, err = ns.WriteNode(context.Background(), prollyNode, &prefix)
+	assert.NoError(t, err)
+
+	encoder, err := multicodec.DefaultRegistry.LookupEncoder(prefix.Codec)
+	assert.NoError(t, err)
+
+	buf := new(bytes.Buffer)
+	err = encoder(ipldNode, buf)
+	assert.NoError(t, err)
+
+	prefix2 := cid.Prefix{
 		Version:  1,
-		Codec:    321321312312,
-		MhType:   3213213123,
-		MhLength: 16231321,
+		Codec:    uint64(mcodec.DagJson),
+		MhType:   uint64(mcodec.Sha2_224),
+		MhLength: 0,
 	}
 
-	t.Log(len(pre))
-	t.Log(len(pre2.Bytes()))
+	encoder, err = multicodec.DefaultRegistry.LookupEncoder(prefix2.Codec)
+	assert.NoError(t, err)
+
+	buf = new(bytes.Buffer)
+	err = encoder(ipldNode, buf)
+	assert.NoError(t, err)
+
+	_, err = ns.WriteNode(context.Background(), prollyNode, &prefix2)
+	assert.NoError(t, err)
+
 }

@@ -13,9 +13,9 @@ type Splitter interface {
 	Reset()
 }
 
-var _ Splitter = &PrefixSplitter{}
+var _ Splitter = &SuffixSplitter{}
 
-type PrefixSplitter struct {
+type SuffixSplitter struct {
 	isBoundary       bool
 	totalBytesSize   int
 	totalPairsNumber int
@@ -26,10 +26,10 @@ type PrefixSplitter struct {
 func NewSplitterFromConfig(config *ChunkConfig) Splitter {
 	var splitter Splitter
 	switch config.StrategyType {
-	case PrefixThreshold:
-		splitter = &PrefixSplitter{
+	case SuffixThreshold:
+		splitter = &SuffixSplitter{
 			config:  config,
-			pattern: uint64(1<<config.Strategy.Prefix.ChunkingFactor - 1),
+			pattern: uint64(1<<config.Strategy.Suffix.ChunkingFactor - 1),
 		}
 	default:
 		panic(fmt.Errorf("unsupported chunk strategy: %v", config.StrategyType))
@@ -37,11 +37,11 @@ func NewSplitterFromConfig(config *ChunkConfig) Splitter {
 	return splitter
 }
 
-func (p *PrefixSplitter) IsBoundary() bool {
+func (p *SuffixSplitter) IsBoundary() bool {
 	return p.isBoundary
 }
 
-func (p *PrefixSplitter) Append(key, val []byte) error {
+func (p *SuffixSplitter) Append(key, val []byte) error {
 	// can't append until reset splitter after boundary generated
 	if p.isBoundary {
 		return fmt.Errorf("boundary generated but not reset")
@@ -62,11 +62,6 @@ func (p *PrefixSplitter) Append(key, val []byte) error {
 		return nil
 	}
 
-	if p.totalBytesSize >= p.config.MaxNodeSize {
-		p.isBoundary = true
-		return nil
-	}
-
 	h := xxh3.Hash(input)
 
 	if h&p.pattern == 0 {
@@ -75,7 +70,7 @@ func (p *PrefixSplitter) Append(key, val []byte) error {
 	return nil
 }
 
-func (p *PrefixSplitter) Reset() {
+func (p *SuffixSplitter) Reset() {
 	p.totalBytesSize = 0
 	p.totalPairsNumber = 0
 	p.isBoundary = false

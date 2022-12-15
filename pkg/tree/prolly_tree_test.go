@@ -4,6 +4,7 @@ import (
 	"context"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
+	"go-ipld-prolly-trees/pkg/tree/node_store"
 	"go-ipld-prolly-trees/pkg/tree/schema"
 	"math/rand"
 	"testing"
@@ -11,7 +12,7 @@ import (
 
 func TestProllyTreeBuildAndReload(t *testing.T) {
 	ctx := context.Background()
-	ns := testMemNodeStore()
+	ns := nodestore.TestMemNodeStore()
 	cfg := schema.DefaultChunkConfig()
 	framwork, err := NewFramework(ctx, ns, cfg, nil)
 	assert.NoError(t, err)

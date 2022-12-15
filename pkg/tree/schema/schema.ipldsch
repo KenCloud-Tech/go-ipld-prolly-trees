@@ -15,7 +15,7 @@ type ProllyRoot struct{
     ConfigCid &ChunkConfig
 }
 
-type PrefixThresholdConfig struct {
+type SuffixThresholdConfig struct {
     chunkingFactor Int
 } representation tuple
 
@@ -26,9 +26,10 @@ type ChunkConfig struct{
     minNodeSize     Int
     maxNodeSize     Int
     maxPairsInNode  Int
+    nodeCodec       Bytes
     strategy        strategy
 } representation tuple
 
 type strategy union {
-    | PrefixThresholdConfig     "prefix"
+    | SuffixThresholdConfig     "suffix"
 } representation keyed

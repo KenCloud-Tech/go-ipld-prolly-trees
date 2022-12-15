@@ -1,48 +1,67 @@
 package tree
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
 	. "go-ipld-prolly-trees/pkg/tree/schema"
 	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
 type nodeBuffer struct {
-	keys   [][]byte
-	values []ipld.Node
-	isLeaf bool
+	nd          ProllyNode
+	nodeCoder   *nodestore.NodeCoder
+	maxNodeSize int
+	minNodeSize int
 }
 
 func (nb *nodeBuffer) count() int {
-	return len(nb.keys)
+	return len(nb.nd.Keys)
 }
 
-func (nb *nodeBuffer) addPair(key []byte, val ipld.Node) {
-	nb.keys = append(nb.keys, key)
-	nb.values = append(nb.values, val)
+func (nb *nodeBuffer) tryAddPair(key []byte, val ipld.Node) bool {
+	nb.nd.Keys = append(nb.nd.Keys, key)
+	nb.nd.Values = append(nb.nd.Values, val)
+
+	sz := nb.encodedSize()
+	if sz > nb.maxNodeSize {
+		// revert
+		count := nb.count()
+		nb.nd.Keys = nb.nd.Keys[:count]
+		nb.nd.Values = nb.nd.Values[:count]
+		return false
+	}
+
+	return true
+}
+
+func (nb *nodeBuffer) encodedSize() int {
+	ipldNode, err := nb.nd.ToNode()
+	if err != nil {
+		panic(err)
+	}
+	res, err := nb.nodeCoder.EncodeNode(ipldNode)
+	if err != nil {
+		panic(err)
+	}
+
+	return len(res)
 }
 
 func (nb *nodeBuffer) clean() {
-	nb.keys = nil
-	nb.values = nil
+	nb.nd.Keys = nil
+	nb.nd.Values = nil
 }
 
 func (nb *nodeBuffer) build() *ProllyNode {
-	n := &ProllyNode{
-		Keys:   nb.keys,
-		IsLeaf: nb.isLeaf,
-	}
-
-	n.Values = nb.values
+	node := nb.nd
 
 	nb.clean()
-	return n
+	return &node
 }
 
 type LevelBuilder struct {
@@ -50,6 +69,8 @@ type LevelBuilder struct {
 	isLeaf        bool
 	cursor        *Cursor
 	nodeBuffer    *nodeBuffer
+	nodeCoder     *nodestore.NodeCoder
+	cidprefix     *cid.Prefix
 	parentBuilder *LevelBuilder
 	nodeStore     types.NodeStore
 	splitter      Splitter
@@ -58,14 +79,13 @@ type LevelBuilder struct {
 }
 
 func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, config *ChunkConfig, frameWork *Framework) (*LevelBuilder, error) {
-	if config == nil {
-		panic("nil config")
-	}
-
 	splitter := NewSplitterFromConfig(config)
 
 	nb := &nodeBuffer{
-		isLeaf: isLeaf,
+		nd:          ProllyNode{IsLeaf: isLeaf},
+		nodeCoder:   frameWork.nodeCoder,
+		maxNodeSize: config.MaxNodeSize,
+		minNodeSize: config.MinNodeSize,
 	}
 
 	lb := &LevelBuilder{
@@ -73,6 +93,8 @@ func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, confi
 		isLeaf:     isLeaf,
 		nodeBuffer: nb,
 		nodeStore:  ns,
+		nodeCoder:  frameWork.nodeCoder,
+		cidprefix:  frameWork.cidPrefix,
 		splitter:   splitter,
 		framework:  frameWork,
 	}
@@ -101,25 +123,24 @@ func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node)
 		return false, fmt.Errorf("append pair in done builder")
 	}
 
-	var valBytes []byte
-	if lb.isLeaf {
-		valBuffer := new(bytes.Buffer)
-		// maybe configurable
-		err := dagcbor.Encode(value, valBuffer)
-		if err != nil {
-			return false, err
-		}
-		valBytes = valBuffer.Bytes()
-	} else {
-		link, err := value.AsLink()
-		if err != nil {
-			return false, err
-		}
-		valBytes = link.(cidlink.Link).Bytes()
+	valBytes, err := lb.nodeCoder.EncodeNode(value)
+	if err != nil {
+		return false, err
 	}
-	lb.nodeBuffer.addPair(key, value)
 
-	err := lb.splitter.Append(key, valBytes)
+	ok := lb.nodeBuffer.tryAddPair(key, value)
+	if !ok {
+		err = lb.splitBoundary(ctx)
+		if err != nil {
+			return false, err
+		}
+		ok = lb.nodeBuffer.tryAddPair(key, value)
+		if !ok {
+			panic("too large pair bigger than the node size limit")
+		}
+	}
+
+	err = lb.splitter.Append(key, valBytes)
 	if err != nil {
 		return false, err
 	}
@@ -149,7 +170,7 @@ func buildAndSaveNode(ctx context.Context, nb *nodeBuffer, prefix *cid.Prefix, n
 }
 
 func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
-	node, addr, err := buildAndSaveNode(ctx, lb.nodeBuffer, nil, lb.nodeStore)
+	node, addr, err := buildAndSaveNode(ctx, lb.nodeBuffer, lb.cidprefix, lb.nodeStore)
 	if err != nil {
 		return err
 	}
@@ -269,7 +290,7 @@ func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid,
 
 		// ending condition
 		if lb.isLeaf || lb.nodeBuffer.count() > 1 {
-			node, addr, err := buildAndSaveNode(ctx, lb.nodeBuffer, nil, lb.nodeStore)
+			node, addr, err := buildAndSaveNode(ctx, lb.nodeBuffer, lb.cidprefix, lb.nodeStore)
 			if err != nil {
 				return false, nil, cid.Undef, err
 			}
@@ -300,7 +321,7 @@ func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuffer) (
 	if nb.count() != 1 {
 		return nil, cid.Undef, fmt.Errorf("invalid nodeBuffer count")
 	}
-	childCid := getCidFromIpldNode(nb.values[0])
+	childCid := getCidFromIpldNode(nb.nd.Values[0])
 
 	for {
 		child, err := ns.ReadNode(ctx, childCid)
@@ -316,19 +337,35 @@ func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuffer) (
 
 type Framework struct {
 	done      bool
+	cidPrefix *cid.Prefix
+	nodeCoder *nodestore.NodeCoder
 	configCid cid.Cid
 	builders  []*LevelBuilder
 }
 
 func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur *Cursor) (*Framework, error,
 ) {
-	var err error
+	if cfg == nil {
+		return nil, fmt.Errorf("nil config")
+	}
+	cidprefix, err := cid.PrefixFromBytes(cfg.NodeCodec)
+	if err != nil {
+		return nil, err
+	}
+	nodeCoder := nodestore.NewNodeCoder()
+	// ignore error, we can register the codec later
+	_ = nodeCoder.InitEncoder(cidprefix.Codec)
+
 	configCid, err := ns.WriteTreeConfig(ctx, cfg, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	framework := &Framework{configCid: configCid}
+	framework := &Framework{
+		configCid: configCid,
+		cidPrefix: &cidprefix,
+		nodeCoder: nodeCoder,
+	}
 
 	var leafBuilder *LevelBuilder
 	if cur == nil {

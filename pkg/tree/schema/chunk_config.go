@@ -1,6 +1,8 @@
 package schema
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 	DefaultMinChunkSize = 1 << 9
@@ -10,7 +12,7 @@ const (
 type ChunkStrategy string
 
 const (
-	PrefixThreshold  byte = byte(0)
+	SuffixThreshold  byte = byte(0)
 	WeibullThreshold byte = byte(1)
 	RollingHash      byte = byte(2)
 )
@@ -22,6 +24,7 @@ type ChunkConfig struct {
 	MinNodeSize    int
 	MaxNodeSize    int
 	MaxPairsInNode int
+	NodeCodec      []byte
 	Strategy       strategy
 }
 
@@ -39,8 +42,9 @@ func DefaultChunkConfig() *ChunkConfig {
 		MinNodeSize:    DefaultMinChunkSize,
 		MaxNodeSize:    DefaultMaxChunkSize,
 		MaxPairsInNode: 1000,
-		StrategyType:   PrefixThreshold,
-		Strategy: strategy{Prefix: &PrefixThresholdConfig{
+		StrategyType:   SuffixThreshold,
+		NodeCodec:      DefaultLinkProto.Prefix.Bytes(),
+		Strategy: strategy{Suffix: &PrefixThresholdConfig{
 			ChunkingFactor: 10,
 		}},
 	}
@@ -49,7 +53,7 @@ func DefaultChunkConfig() *ChunkConfig {
 type strategy struct {
 	//Weilbull    *WeibullThresholdConfig
 	//RollingHash *RollingHashConfig
-	Prefix *PrefixThresholdConfig
+	Suffix *PrefixThresholdConfig
 }
 
 func (sg *strategy) Equal(_sg *strategy, strategyType byte) bool {
@@ -59,9 +63,9 @@ func (sg *strategy) Equal(_sg *strategy, strategyType byte) bool {
 	//case WeibullThreshold:
 	//	strCfg = sg.Weilbull
 	//	_strCfg = _sg.Weilbull
-	case PrefixThreshold:
-		strCfg = sg.Prefix
-		_strCfg = _sg.Prefix
+	case SuffixThreshold:
+		strCfg = sg.Suffix
+		_strCfg = _sg.Suffix
 	//case RollingHash:
 	//	strCfg = sg.RollingHash
 	//	_strCfg = _sg.RollingHash

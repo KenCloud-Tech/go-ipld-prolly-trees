@@ -1,24 +1,13 @@
 package tree
 
 import (
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-ipld-prime"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
-	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
-	"go-ipld-prolly-trees/pkg/tree/types"
 	"math/rand"
 	"sort"
 )
 
 var testRand = rand.New(rand.NewSource(1))
-
-func testMemNodeStore() types.NodeStore {
-	ds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	ns, _ := nodestore.NewNodeStore(bs, &nodestore.StoreConfig{CacheSize: 1 << 14})
-	return ns
-}
 
 func RandomTestData(count int) ([][]byte, []ipld.Node) {
 	keys := make([][]byte, count)

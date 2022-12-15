@@ -5,6 +5,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/multiformats/go-multicodec"
 )
 
 type CompareFunc func(left, right []byte) int
@@ -70,4 +71,13 @@ func (n *ProllyNode) GetIdxLink(i int) cid.Cid {
 		panic(fmt.Errorf("invalid value, expected cidlink, got: %v", n.Values[i]))
 	}
 	return link.(cidlink.Link).Cid
+}
+
+var DefaultLinkProto = cidlink.LinkPrototype{
+	Prefix: cid.Prefix{
+		Version:  1,
+		Codec:    uint64(multicodec.DagCbor),
+		MhType:   uint64(multicodec.Sha2_256),
+		MhLength: 16,
+	},
 }
