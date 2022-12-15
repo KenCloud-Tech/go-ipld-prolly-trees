@@ -22,7 +22,7 @@ type ProllyTree struct {
 	treeConfig *ChunkConfig
 }
 
-func LoadProllyTreeFromRootNode(rootNode *ProllyRoot, ns types.NodeStore) (*ProllyTree, error) {
+func LoadProllyTreeFromRootNode(rootNode *ProllyTreeNode, ns types.NodeStore) (*ProllyTree, error) {
 	prollyRootNode, err := ns.ReadNode(context.Background(), rootNode.RootCid)
 	if err != nil {
 		return nil, err

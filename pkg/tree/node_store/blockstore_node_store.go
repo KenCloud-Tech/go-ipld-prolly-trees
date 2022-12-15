@@ -104,7 +104,7 @@ func (ns *NodeStore) ReadNode(ctx context.Context, c cid.Cid) (*schema.ProllyNod
 	return inode, nil
 }
 
-func (ns *NodeStore) WriteRoot(ctx context.Context, root *schema.ProllyRoot, prefix *cid.Prefix) (cid.Cid, error) {
+func (ns *NodeStore) WriteRoot(ctx context.Context, root *schema.ProllyTreeNode, prefix *cid.Prefix) (cid.Cid, error) {
 	var linkProto cidlink.LinkPrototype
 	if prefix == nil {
 		// default linkproto
@@ -131,13 +131,13 @@ func (ns *NodeStore) WriteRoot(ctx context.Context, root *schema.ProllyRoot, pre
 	return c, nil
 }
 
-func (ns *NodeStore) ReadRoot(ctx context.Context, c cid.Cid) (*schema.ProllyRoot, error) {
+func (ns *NodeStore) ReadRoot(ctx context.Context, c cid.Cid) (*schema.ProllyTreeNode, error) {
 	var inCache bool
 	if ns.cache != nil {
 		var res interface{}
 		res, inCache = ns.cache.Get(c)
 		if inCache {
-			return res.(*schema.ProllyRoot), nil
+			return res.(*schema.ProllyTreeNode), nil
 		}
 	}
 	nd, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, schema.ProllyRootPrototype.Representation())

@@ -42,7 +42,7 @@ func UnwrapProllyNode(node ipld.Node) (*ProllyNode, error) {
 	return nd, nil
 }
 
-func (n *ProllyRoot) ToNode() (nd ipld.Node, err error) {
+func (n *ProllyTreeNode) ToNode() (nd ipld.Node, err error) {
 	// TODO: remove the panic recovery once IPLD bindnode is stabilized.
 	defer func() {
 		if r := recover(); r != nil {
@@ -53,7 +53,7 @@ func (n *ProllyRoot) ToNode() (nd ipld.Node, err error) {
 	return
 }
 
-func UnwrapProllyRoot(node ipld.Node) (*ProllyRoot, error) {
+func UnwrapProllyRoot(node ipld.Node) (*ProllyTreeNode, error) {
 	if node.Prototype() != ProllyRootPrototype {
 		prBuilder := ProllyRootPrototype.NewBuilder()
 		err := prBuilder.AssignNode(node)
@@ -63,9 +63,9 @@ func UnwrapProllyRoot(node ipld.Node) (*ProllyRoot, error) {
 		node = prBuilder.Build()
 	}
 
-	nd, ok := bindnode.Unwrap(node).(*ProllyRoot)
+	nd, ok := bindnode.Unwrap(node).(*ProllyTreeNode)
 	if !ok || nd == nil {
-		return nil, fmt.Errorf("unwrapped node does not match schema.ProllyRoot")
+		return nil, fmt.Errorf("unwrapped node does not match schema.ProllyTreeNode")
 	}
 	return nd, nil
 }

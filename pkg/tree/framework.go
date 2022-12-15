@@ -13,27 +13,27 @@ import (
 	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
-type nodeBuilder struct {
+type nodeBuffer struct {
 	keys   [][]byte
 	values []ipld.Node
 	isLeaf bool
 }
 
-func (nb *nodeBuilder) count() int {
+func (nb *nodeBuffer) count() int {
 	return len(nb.keys)
 }
 
-func (nb *nodeBuilder) addPair(key []byte, val ipld.Node) {
+func (nb *nodeBuffer) addPair(key []byte, val ipld.Node) {
 	nb.keys = append(nb.keys, key)
 	nb.values = append(nb.values, val)
 }
 
-func (nb *nodeBuilder) clean() {
+func (nb *nodeBuffer) clean() {
 	nb.keys = nil
 	nb.values = nil
 }
 
-func (nb *nodeBuilder) build() *ProllyNode {
+func (nb *nodeBuffer) build() *ProllyNode {
 	n := &ProllyNode{
 		Keys:   nb.keys,
 		IsLeaf: nb.isLeaf,
@@ -49,7 +49,7 @@ type LevelBuilder struct {
 	config        *ChunkConfig
 	isLeaf        bool
 	cursor        *Cursor
-	nodeBuffer    *nodeBuilder
+	nodeBuffer    *nodeBuffer
 	parentBuilder *LevelBuilder
 	nodeStore     types.NodeStore
 	splitter      Splitter
@@ -57,35 +57,43 @@ type LevelBuilder struct {
 	done          bool
 }
 
-func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, config *ChunkConfig, cur *Cursor, frameWork *Framework) *LevelBuilder {
+func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, config *ChunkConfig, frameWork *Framework) (*LevelBuilder, error) {
 	if config == nil {
 		panic("nil config")
 	}
 
 	splitter := NewSplitterFromConfig(config)
 
-	nb := &nodeBuilder{
+	nb := &nodeBuffer{
 		isLeaf: isLeaf,
 	}
 
 	lb := &LevelBuilder{
 		config:     config,
 		isLeaf:     isLeaf,
-		cursor:     cur,
 		nodeBuffer: nb,
 		nodeStore:  ns,
 		splitter:   splitter,
 		framework:  frameWork,
 	}
 
-	if cur != nil {
-		err := lb.appendEntriesBeforeCursor(ctx)
-		if err != nil {
-			panic(err.Error())
-		}
-	}
+	return lb, nil
+}
 
-	return lb
+func newLevelBuilderWithCursor(ctx context.Context, isLeaf bool, ns types.NodeStore, config *ChunkConfig, frameWork *Framework, cur *Cursor) (*LevelBuilder, error) {
+	if cur == nil {
+		return nil, fmt.Errorf("nil cursor")
+	}
+	lb, err := newLevelBuilder(ctx, isLeaf, ns, config, frameWork)
+	if err != nil {
+		return nil, err
+	}
+	lb.cursor = cur
+	err = lb.appendEntriesBeforeCursor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return lb, nil
 }
 
 func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node) (bool, error) {
@@ -128,9 +136,9 @@ func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node)
 	return false, nil
 }
 
-func buildAndSaveNode(ctx context.Context, nb *nodeBuilder, prefix *cid.Prefix, ns types.NodeStore) (*ProllyNode, cid.Cid, error) {
+func buildAndSaveNode(ctx context.Context, nb *nodeBuffer, prefix *cid.Prefix, ns types.NodeStore) (*ProllyNode, cid.Cid, error) {
 	if !(nb.count() > 0) {
-		return nil, cid.Undef, fmt.Errorf("invalid nodeBuilder to build")
+		return nil, cid.Undef, fmt.Errorf("invalid nodeBuffer to build")
 	}
 	node := nb.build()
 	addr, err := ns.WriteNode(ctx, node, prefix)
@@ -176,9 +184,17 @@ func (lb *LevelBuilder) createParentLevelBuilder(ctx context.Context) error {
 		parentCursor = lb.cursor.parent
 	}
 
-	lb.parentBuilder = newLevelBuilder(ctx, false, lb.nodeStore, lb.config, parentCursor, lb.framework)
+	if parentCursor != nil {
+		lb.parentBuilder, err = newLevelBuilderWithCursor(ctx, false, lb.nodeStore, lb.config, lb.framework, parentCursor)
+	} else {
+		lb.parentBuilder, err = newLevelBuilder(ctx, false, lb.nodeStore, lb.config, lb.framework)
+	}
+	if err != nil {
+		return err
+	}
+
 	lb.framework.builders = append(lb.framework.builders, lb.parentBuilder)
-	return err
+	return nil
 }
 
 func (lb *LevelBuilder) appendEntriesBeforeCursor(ctx context.Context) error {
@@ -241,14 +257,6 @@ func (lb *LevelBuilder) finish(ctx context.Context) (bool, *ProllyNode, cid.Cid,
 		lb.done = true
 	}()
 
-	// if cursor exists, it means that this is modifying the ProllyTree and rebalance
-	if lb.cursor != nil {
-		err := lb.appendEntriesAfterCursor(ctx)
-		if err != nil {
-			return false, nil, cid.Undef, err
-		}
-	}
-
 	// if not top level, finish pairs in buffer(if remaining)
 	if lb.parentBuilder != nil {
 		if lb.nodeBuffer.count() > 0 {
@@ -288,9 +296,9 @@ func getCidFromIpldNode(n ipld.Node) cid.Cid {
 	return link.(cidlink.Link).Cid
 }
 
-func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuilder) (*ProllyNode, cid.Cid, error) {
+func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuffer) (*ProllyNode, cid.Cid, error) {
 	if nb.count() != 1 {
-		return nil, cid.Undef, fmt.Errorf("invalid nodeBuilder count")
+		return nil, cid.Undef, fmt.Errorf("invalid nodeBuffer count")
 	}
 	childCid := getCidFromIpldNode(nb.values[0])
 
@@ -314,6 +322,7 @@ type Framework struct {
 
 func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur *Cursor) (*Framework, error,
 ) {
+	var err error
 	configCid, err := ns.WriteTreeConfig(ctx, cfg, nil)
 	if err != nil {
 		return nil, err
@@ -321,7 +330,12 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur
 
 	framework := &Framework{configCid: configCid}
 
-	leafBuilder := newLevelBuilder(ctx, true, ns, cfg, cur, framework)
+	var leafBuilder *LevelBuilder
+	if cur == nil {
+		leafBuilder, err = newLevelBuilder(ctx, true, ns, cfg, framework)
+	} else {
+		leafBuilder, err = newLevelBuilderWithCursor(ctx, true, ns, cfg, framework, cur)
+	}
 
 	builders := make([]*LevelBuilder, 0)
 	builders = append(builders, leafBuilder)
@@ -355,7 +369,7 @@ func (fw *Framework) AppendBatch(ctx context.Context, keys [][]byte, vals []ipld
 	return nil
 }
 
-func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyRoot, error) {
+func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyTreeNode, error) {
 	if fw.done {
 		return nil, nil, fmt.Errorf("repeated action")
 	}
@@ -369,12 +383,20 @@ func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyRoot, erro
 			return nil, nil, fmt.Errorf("finish all builders but not get root")
 		}
 
-		over, rootNode, rootCid, err := fw.builders[i].finish(ctx)
+		levelBuilder := fw.builders[i]
+		if levelBuilder.cursor != nil {
+			err := levelBuilder.appendEntriesAfterCursor(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
+		over, rootNode, rootCid, err := levelBuilder.finish(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
 		if over {
-			root := &ProllyRoot{
+			root := &ProllyTreeNode{
 				RootCid:   rootCid,
 				ConfigCid: fw.configCid,
 			}
@@ -386,19 +408,19 @@ func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyRoot, erro
 }
 
 func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, error) {
-	rootProllyNode, rootNode, err := fw.finish(ctx)
+	rootNode, prollyTreeNode, err := fw.finish(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rootNodeCid, err := fw.builders[0].nodeStore.WriteRoot(ctx, rootNode, nil)
+	treeNodeCid, err := fw.builders[0].nodeStore.WriteRoot(ctx, prollyTreeNode, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	tree := &ProllyTree{
-		treeCid:    rootNodeCid,
-		rootCid:    rootNode.RootCid,
-		root:       rootProllyNode,
+		treeCid:    treeNodeCid,
+		rootCid:    prollyTreeNode.RootCid,
+		root:       rootNode,
 		ns:         fw.builders[0].nodeStore,
 		treeConfig: fw.builders[0].config,
 	}
