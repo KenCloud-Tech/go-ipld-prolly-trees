@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	. "go-ipld-prolly-trees/pkg/tree/schema"
 	"go-ipld-prolly-trees/pkg/tree/types"
+	"io"
 )
 
 var (
@@ -20,6 +22,9 @@ type ProllyTree struct {
 	root       *ProllyNode
 	ns         types.NodeStore
 	treeConfig *ChunkConfig
+
+	mutating  bool
+	mutations *Mutations
 }
 
 func LoadProllyTreeFromRootNode(rootNode *ProllyTreeNode, ns types.NodeStore) (*ProllyTree, error) {
@@ -49,6 +54,16 @@ func LoadProllyTreeFromRootCid(rootCid cid.Cid, ns types.NodeStore) (*ProllyTree
 }
 
 func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
+	if pt.mutating {
+		cacheNode, err := pt.mutations.Get(key)
+		if err != nil {
+			return nil, err
+		}
+		if cacheNode != nil {
+			return cacheNode, nil
+		}
+	}
+
 	cur, err := CursorAtItem(pt.root, key, DefaultCompareFunc, pt.ns)
 	if err != nil {
 		return nil, err
@@ -92,8 +107,75 @@ func (pt *ProllyTree) Search(prefix []byte) (*SearchIterator, error) {
 	return iter, nil
 }
 
+func (pt *ProllyTree) Mutate() error {
+	pt.mutations = NewMutations()
+	pt.mutating = true
+	return nil
+}
+
 func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error {
+	if !pt.mutating {
+		return fmt.Errorf("please call ProllyTree.Mutate firstly")
+	}
 	cur, err := CursorAtItem(pt.root, key, DefaultCompareFunc, pt.ns)
+	if err != nil {
+		return err
+	}
+
+	mut := &Mutation{
+		key: key,
+		val: val,
+	}
+
+	if cur.IsValid() {
+		// modify
+		if DefaultCompareFunc(cur.GetKey(), key) == 0 {
+			mut.op = modify
+		} else {
+			//add new pair
+			mut.op = add
+		}
+		err = pt.mutations.addMutation(mut)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *ProllyTree) Delete(ctx context.Context, key []byte) error {
+	if !pt.mutating {
+		return fmt.Errorf("please call ProllyTree.Mutate firstly")
+	}
+	cur, err := CursorAtItem(pt.root, key, DefaultCompareFunc, pt.ns)
+	if err != nil {
+		return err
+	}
+
+	if cur.IsValid() {
+		// delete
+		if DefaultCompareFunc(cur.GetKey(), key) == 0 {
+			err = pt.mutations.addMutation(&Mutation{
+				key: key,
+				op:  remove,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		// if not exist, ignore
+	}
+
+	return nil
+}
+
+func (pt *ProllyTree) Rebuild(ctx context.Context) error {
+	mut, err := pt.mutations.NextMutation()
+	if err != nil {
+		return err
+	}
+	cur, err := CursorAtItem(pt.root, mut.key, DefaultCompareFunc, pt.ns)
 	if err != nil {
 		return err
 	}
@@ -101,25 +183,59 @@ func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error 
 	if err != nil {
 		return err
 	}
-	if cur.IsValid() {
-		// modify
-		if DefaultCompareFunc(cur.GetKey(), key) == 0 {
-			err := framework.Append(ctx, key, val)
+	for {
+		if cur.IsValid() {
+			// modify
+			if DefaultCompareFunc(cur.GetKey(), mut.key) == 0 {
+				if mut.op == modify {
+					err := framework.Append(ctx, mut.key, mut.val)
+					if err != nil {
+						return err
+					}
+					err = cur.Advance()
+					if err != nil {
+						return err
+					}
+				} else if mut.op == remove {
+					err = cur.Advance()
+					if err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("invalid mutation: %#v", mut)
+				}
+			} else {
+				//add new pair
+				if mut.op == add {
+					err := framework.Append(ctx, mut.key, mut.val)
+					if err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("invalid mutation: %#v", mut)
+				}
+			}
+			mut, err = pt.mutations.NextMutation()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+
+			cur, err = CursorAtItem(pt.root, mut.key, DefaultCompareFunc, pt.ns)
 			if err != nil {
 				return err
 			}
-			err = cur.Advance()
+			// todo move cursor to next mutation location and append items between them
+			err = framework.appendToCursor(ctx, cur)
 			if err != nil {
 				return err
 			}
 		} else {
-			//add new pair
-			err := framework.Append(ctx, key, val)
-			if err != nil {
-				return err
-			}
+			return fmt.Errorf("invalid cursor")
 		}
 	}
+
 	newTree, err := framework.BuildTree(ctx)
 	if err != nil {
 		return err
@@ -127,5 +243,9 @@ func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error 
 	pt.root = newTree.root
 	pt.rootCid = newTree.rootCid
 	pt.treeCid = newTree.treeCid
+
+	pt.mutating = false
+	pt.mutations = nil
+
 	return nil
 }

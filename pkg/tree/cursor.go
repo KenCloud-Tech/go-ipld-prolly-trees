@@ -114,3 +114,23 @@ func (cur *Cursor) GetValue() ipld.Node {
 	}
 	return cur.node.GetIdxValue(cur.idx)
 }
+
+func (cur *Cursor) Compare(_cur *Cursor) int {
+	if cur == nil && _cur == nil {
+		return 0
+	} else if cur == nil || _cur == nil {
+		panic("can not compare two cursors with different height")
+	}
+	diff := cur.idx - _cur.idx
+	if pdiff := cur.parent.Compare(_cur.parent); pdiff != 0 {
+		diff = pdiff
+	}
+	return diff
+}
+
+func (cur *Cursor) Equal(_cur *Cursor) bool {
+	if cur.Compare(_cur) == 0 {
+		return true
+	}
+	return false
+}

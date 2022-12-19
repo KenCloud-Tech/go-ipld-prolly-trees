@@ -34,7 +34,13 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 	}
 
 	newValNode := basicnode.NewBytes([]byte("test new values！!aAbB"))
+	err = tree.Mutate()
+	assert.NoError(t, err)
+
 	err = tree.Put(ctx, testKeys[19999], newValNode)
+	assert.NoError(t, err)
+
+	err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
 
 	reloadTree, err := LoadProllyTreeFromRootCid(tree.treeCid, ns)
@@ -69,8 +75,12 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 
 	// insert
 	insertVnode := basicnode.NewString("dasdsadasdsad")
+	err = tree.Mutate()
+	assert.NoError(t, err)
 	err = tree.Put(ctx, []byte("testkey123321"), insertVnode)
 	assert.Equal(t, vnode, trueVnode)
+	err = tree.Rebuild(ctx)
+	assert.NoError(t, err)
 
 	res, err := tree.Get([]byte("testkey123321"))
 	assert.NoError(t, err)

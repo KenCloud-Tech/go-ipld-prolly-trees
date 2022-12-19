@@ -466,3 +466,68 @@ func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, error) {
 
 	return tree, nil
 }
+
+func (fw *Framework) appendToCursor(ctx context.Context, cur *Cursor) error {
+	return fw.builders[0].appendToCursor(ctx, cur)
+}
+
+func (lb *LevelBuilder) appendToCursor(ctx context.Context, cur *Cursor) error {
+	lcur := lb.cursor
+	if lcur == nil || cur == nil {
+		return fmt.Errorf("invalid cursor")
+	}
+
+	if lcur.Equal(cur) {
+		return nil
+	} else if lcur.Compare(cur) > 0 {
+		return fmt.Errorf("cursor is behind the framework")
+	}
+
+	boundary, err := lb.append(ctx, lcur.GetKey(), lcur.GetValue())
+	if err != nil {
+		return err
+	}
+
+	for {
+		if boundary && lcur.IsAtEnd() {
+			break
+		}
+		err = lcur.Advance()
+		if err != nil {
+			return err
+		}
+		if lcur.Compare(cur) == 0 {
+			return nil
+		}
+
+		boundary, err = lb.append(ctx, lcur.GetKey(), lcur.GetValue())
+		if err != nil {
+			return err
+		}
+	}
+
+	if lcur.parent == nil && cur.parent == nil {
+		return nil
+	} else if lcur.parent != nil && cur.parent != nil {
+		if lcur.parent.Equal(cur.parent) {
+			return nil
+		}
+	} else {
+		return fmt.Errorf("two cursors has different height")
+	}
+
+	err = lb.parentBuilder.appendToCursor(ctx, cur.parent)
+	if err != nil {
+		return err
+	}
+
+	lb.cursor.node = cur.node
+	lb.cursor.idx = cur.idx
+
+	err = lb.appendEntriesBeforeCursor(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
