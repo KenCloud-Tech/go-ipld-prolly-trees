@@ -47,7 +47,7 @@ func (n *ProllyNode) KeyIndex(item []byte, cp CompareFunc) int {
 		}
 	}
 
-	return r
+	return l
 }
 
 func (n *ProllyNode) ItemCount() int {

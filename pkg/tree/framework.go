@@ -31,8 +31,8 @@ func (nb *nodeBuffer) tryAddPair(key []byte, val ipld.Node) bool {
 	if sz > nb.maxNodeSize {
 		// revert
 		count := nb.count()
-		nb.nd.Keys = nb.nd.Keys[:count]
-		nb.nd.Values = nb.nd.Values[:count]
+		nb.nd.Keys = nb.nd.Keys[:count-1]
+		nb.nd.Values = nb.nd.Values[:count-1]
 		return false
 	}
 
@@ -99,6 +99,8 @@ func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, confi
 		framework:  frameWork,
 	}
 
+	lb.framework.builders = append(lb.framework.builders, lb)
+
 	return lb, nil
 }
 
@@ -115,6 +117,14 @@ func newLevelBuilderWithCursor(ctx context.Context, isLeaf bool, ns types.NodeSt
 	if err != nil {
 		return nil, err
 	}
+
+	if cur.parent != nil {
+		err = lb.createParentLevelBuilder(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return lb, nil
 }
 
@@ -214,7 +224,6 @@ func (lb *LevelBuilder) createParentLevelBuilder(ctx context.Context) error {
 		return err
 	}
 
-	lb.framework.builders = append(lb.framework.builders, lb.parentBuilder)
 	return nil
 }
 
@@ -265,6 +274,8 @@ func (lb *LevelBuilder) appendEntriesAfterCursor(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		cur.node = nil
 	}
 
 	return nil
@@ -367,17 +378,12 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur
 		nodeCoder: nodeCoder,
 	}
 
-	var leafBuilder *LevelBuilder
 	if cur == nil {
-		leafBuilder, err = newLevelBuilder(ctx, true, ns, cfg, framework)
+		_, err = newLevelBuilder(ctx, true, ns, cfg, framework)
 	} else {
-		leafBuilder, err = newLevelBuilderWithCursor(ctx, true, ns, cfg, framework, cur)
+		_, err = newLevelBuilderWithCursor(ctx, true, ns, cfg, framework, cur)
 	}
 
-	builders := make([]*LevelBuilder, 0)
-	builders = append(builders, leafBuilder)
-
-	framework.builders = builders
 	return framework, nil
 }
 
@@ -387,6 +393,13 @@ func (fw *Framework) Append(ctx context.Context, key []byte, val ipld.Node) erro
 	}
 	_, err := fw.builders[0].append(ctx, key, val)
 	return err
+}
+
+func (fw *Framework) AdvanceCursor(ctx context.Context) error {
+	if fw.builders[0].cursor == nil {
+		return fmt.Errorf("nil cursor to advance")
+	}
+	return fw.builders[0].cursor.Advance()
 }
 
 // AppendBatch should only use in data input, cannot be used in rebalance procedure

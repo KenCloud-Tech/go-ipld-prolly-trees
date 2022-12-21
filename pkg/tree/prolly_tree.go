@@ -192,12 +192,12 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) error {
 					if err != nil {
 						return err
 					}
-					err = cur.Advance()
+					err = framework.AdvanceCursor(ctx)
 					if err != nil {
 						return err
 					}
 				} else if mut.op == remove {
-					err = cur.Advance()
+					err = framework.AdvanceCursor(ctx)
 					if err != nil {
 						return err
 					}
@@ -240,6 +240,7 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	pt.root = newTree.root
 	pt.rootCid = newTree.rootCid
 	pt.treeCid = newTree.treeCid

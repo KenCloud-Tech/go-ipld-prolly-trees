@@ -3,6 +3,7 @@ package tree
 import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
+	"io"
 	"testing"
 )
 
@@ -46,6 +47,34 @@ func TestMutations(t *testing.T) {
 			break
 		}
 		assert.True(t, DefaultCompareFunc(preMut.key, mut.key) < 0)
+		preMut = mut
+	}
+}
+
+func TestMutationsSorted(t *testing.T) {
+	mutations := NewMutations()
+
+	testKeys, testVals := RandomTestData(10000)
+	for i := 0; i < len(testKeys); i++ {
+		err := mutations.addMutation(&Mutation{
+			key: testKeys[i],
+			val: testVals[i],
+			op:  add,
+		})
+		assert.NoError(t, err)
+	}
+
+	preMut, err := mutations.NextMutation()
+	assert.NoError(t, err)
+	for {
+		mut, err := mutations.NextMutation()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		if DefaultCompareFunc(mut.key, preMut.key) <= 0 {
+			panic("unsorted!")
+		}
 		preMut = mut
 	}
 }
