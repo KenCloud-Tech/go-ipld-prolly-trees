@@ -17,9 +17,9 @@ const (
 	RollingHash      byte = byte(2)
 )
 
-// Chunk ConfigCid for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
+// TreeConfig includes config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
 // the splitter
-type ChunkConfig struct {
+type TreeConfig struct {
 	StrategyType   byte
 	MinNodeSize    int
 	MaxNodeSize    int
@@ -28,7 +28,7 @@ type ChunkConfig struct {
 	Strategy       strategy
 }
 
-func (cfg *ChunkConfig) Equal(_cfg *ChunkConfig) bool {
+func (cfg *TreeConfig) Equal(_cfg *TreeConfig) bool {
 	if cfg.StrategyType != _cfg.StrategyType ||
 		cfg.MinNodeSize != _cfg.MinNodeSize ||
 		cfg.MaxNodeSize != _cfg.MaxNodeSize {
@@ -37,8 +37,8 @@ func (cfg *ChunkConfig) Equal(_cfg *ChunkConfig) bool {
 	return cfg.Strategy.Equal(&_cfg.Strategy, cfg.StrategyType)
 }
 
-func DefaultChunkConfig() *ChunkConfig {
-	return &ChunkConfig{
+func DefaultChunkConfig() *TreeConfig {
+	return &TreeConfig{
 		MinNodeSize:    DefaultMinChunkSize,
 		MaxNodeSize:    DefaultMaxChunkSize,
 		MaxPairsInNode: 1000,

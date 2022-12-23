@@ -2,7 +2,7 @@ package tree
 
 import (
 	"github.com/ipld/go-ipld-prime"
-	"go-ipld-prolly-trees/pkg/tree/schema"
+	"go-ipld-prolly-trees/pkg/schema"
 	"io"
 	"sort"
 )

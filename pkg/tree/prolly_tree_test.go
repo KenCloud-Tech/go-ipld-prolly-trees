@@ -5,8 +5,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
+	"go-ipld-prolly-trees/pkg/schema"
 	"go-ipld-prolly-trees/pkg/tree/node_store"
-	"go-ipld-prolly-trees/pkg/tree/schema"
 	"math/rand"
 	"testing"
 )
@@ -134,9 +134,6 @@ func TestProllyTreeMutate(t *testing.T) {
 	}
 
 	for i := 0; i < len(testKeys); i++ {
-		if i == 9999 {
-			t.Log("9999")
-		}
 		val, err := tree.Get(testKeys[i])
 		if i >= len(testKeys)/3 && i < (len(testKeys)*3)/5 {
 			assert.NoError(t, err)

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
-	. "go-ipld-prolly-trees/pkg/tree/schema"
+	. "go-ipld-prolly-trees/pkg/schema"
 	"go-ipld-prolly-trees/pkg/tree/types"
 	"io"
 )
@@ -21,7 +21,7 @@ type ProllyTree struct {
 	rootCid    cid.Cid
 	root       *ProllyNode
 	ns         types.NodeStore
-	treeConfig *ChunkConfig
+	treeConfig *TreeConfig
 
 	mutating  bool
 	mutations *Mutations

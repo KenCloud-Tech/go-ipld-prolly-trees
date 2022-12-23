@@ -3,7 +3,7 @@ package nodestore
 import (
 	mcodec "github.com/multiformats/go-multicodec"
 	"github.com/zeebo/assert"
-	"go-ipld-prolly-trees/pkg/tree/schema"
+	"go-ipld-prolly-trees/pkg/schema"
 	"testing"
 )
 

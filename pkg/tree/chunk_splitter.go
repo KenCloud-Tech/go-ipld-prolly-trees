@@ -3,7 +3,7 @@ package tree
 import (
 	"fmt"
 	"github.com/zeebo/xxh3"
-	. "go-ipld-prolly-trees/pkg/tree/schema"
+	. "go-ipld-prolly-trees/pkg/schema"
 )
 
 type Splitter interface {
@@ -20,10 +20,10 @@ type SuffixSplitter struct {
 	totalBytesSize   int
 	totalPairsNumber int
 	pattern          uint64
-	config           *ChunkConfig
+	config           *TreeConfig
 }
 
-func NewSplitterFromConfig(config *ChunkConfig) Splitter {
+func NewSplitterFromConfig(config *TreeConfig) Splitter {
 	var splitter Splitter
 	switch config.StrategyType {
 	case SuffixThreshold:
@@ -79,7 +79,7 @@ func (p *SuffixSplitter) Reset() {
 //type WeibullSplitter struct {
 //	isBoundary     bool
 //	totalItemsSize int
-//	config         *ChunkConfig
+//	config         *TreeConfig
 //}
 //
 //func (ws *WeibullSplitter) IsBoundary() bool {

@@ -49,13 +49,13 @@ func (n *ProllyTreeNode) ToNode() (nd ipld.Node, err error) {
 			err = toError(r)
 		}
 	}()
-	nd = bindnode.Wrap(n, ProllyRootPrototype.Type()).Representation()
+	nd = bindnode.Wrap(n, ProllyTreePrototype.Type()).Representation()
 	return
 }
 
 func UnwrapProllyRoot(node ipld.Node) (*ProllyTreeNode, error) {
-	if node.Prototype() != ProllyRootPrototype {
-		prBuilder := ProllyRootPrototype.NewBuilder()
+	if node.Prototype() != ProllyTreePrototype {
+		prBuilder := ProllyTreePrototype.NewBuilder()
 		err := prBuilder.AssignNode(node)
 		if err != nil {
 			return nil, fmt.Errorf("faild to convert node prototype: %w", err)
@@ -81,7 +81,7 @@ func toError(r interface{}) error {
 	}
 }
 
-func (cfg *ChunkConfig) ToNode() (n ipld.Node, err error) {
+func (cfg *TreeConfig) ToNode() (n ipld.Node, err error) {
 	// TODO: remove the panic recovery once IPLD bindnode is stabilized.
 	defer func() {
 		if r := recover(); r != nil {
@@ -92,7 +92,7 @@ func (cfg *ChunkConfig) ToNode() (n ipld.Node, err error) {
 	return
 }
 
-func UnwrapChunkConfig(node ipld.Node) (*ChunkConfig, error) {
+func UnwrapChunkConfig(node ipld.Node) (*TreeConfig, error) {
 	if node.Prototype() != ChunkConfigPrototype {
 		cfgBuilder := ChunkConfigPrototype.NewBuilder()
 		err := cfgBuilder.AssignNode(node)
@@ -102,9 +102,9 @@ func UnwrapChunkConfig(node ipld.Node) (*ChunkConfig, error) {
 		node = cfgBuilder.Build()
 	}
 
-	cfg, ok := bindnode.Unwrap(node).(*ChunkConfig)
+	cfg, ok := bindnode.Unwrap(node).(*TreeConfig)
 	if !ok || cfg == nil {
-		return nil, fmt.Errorf("unwrapped node does not match schema.ChunkConfig")
+		return nil, fmt.Errorf("unwrapped node does not match schema.TreeConfig")
 	}
 	return cfg, nil
 }

@@ -3,7 +3,7 @@ package types
 import (
 	"context"
 	"github.com/ipfs/go-cid"
-	"go-ipld-prolly-trees/pkg/tree/schema"
+	"go-ipld-prolly-trees/pkg/schema"
 )
 
 // todo: maybe we need clean orphan nodes regularly?
@@ -14,8 +14,8 @@ type NodeStore interface {
 	WriteRoot(ctx context.Context, root *schema.ProllyTreeNode, prefix *cid.Prefix) (cid.Cid, error)
 	ReadRoot(ctx context.Context, c cid.Cid) (*schema.ProllyTreeNode, error)
 
-	WriteTreeConfig(ctx context.Context, cfg *schema.ChunkConfig, prefix *cid.Prefix) (cid.Cid, error)
-	ReadTreeConfig(ctx context.Context, c cid.Cid) (*schema.ChunkConfig, error)
+	WriteTreeConfig(ctx context.Context, cfg *schema.TreeConfig, prefix *cid.Prefix) (cid.Cid, error)
+	ReadTreeConfig(ctx context.Context, c cid.Cid) (*schema.TreeConfig, error)
 
 	Close()
 }

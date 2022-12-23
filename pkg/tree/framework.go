@@ -7,8 +7,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	. "go-ipld-prolly-trees/pkg/schema"
 	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
-	. "go-ipld-prolly-trees/pkg/tree/schema"
 	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
@@ -65,7 +65,7 @@ func (nb *nodeBuffer) build() *ProllyNode {
 }
 
 type LevelBuilder struct {
-	config        *ChunkConfig
+	config        *TreeConfig
 	isLeaf        bool
 	cursor        *Cursor
 	nodeBuffer    *nodeBuffer
@@ -78,7 +78,7 @@ type LevelBuilder struct {
 	done          bool
 }
 
-func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, config *ChunkConfig, frameWork *Framework) (*LevelBuilder, error) {
+func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, config *TreeConfig, frameWork *Framework) (*LevelBuilder, error) {
 	splitter := NewSplitterFromConfig(config)
 
 	nb := &nodeBuffer{
@@ -104,7 +104,7 @@ func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, confi
 	return lb, nil
 }
 
-func newLevelBuilderWithCursor(ctx context.Context, isLeaf bool, ns types.NodeStore, config *ChunkConfig, frameWork *Framework, cur *Cursor) (*LevelBuilder, error) {
+func newLevelBuilderWithCursor(ctx context.Context, isLeaf bool, ns types.NodeStore, config *TreeConfig, frameWork *Framework, cur *Cursor) (*LevelBuilder, error) {
 	if cur == nil {
 		return nil, fmt.Errorf("nil cursor")
 	}
@@ -354,7 +354,7 @@ type Framework struct {
 	builders  []*LevelBuilder
 }
 
-func NewFramework(ctx context.Context, ns types.NodeStore, cfg *ChunkConfig, cur *Cursor) (*Framework, error,
+func NewFramework(ctx context.Context, ns types.NodeStore, cfg *TreeConfig, cur *Cursor) (*Framework, error,
 ) {
 	if cfg == nil {
 		return nil, fmt.Errorf("nil config")

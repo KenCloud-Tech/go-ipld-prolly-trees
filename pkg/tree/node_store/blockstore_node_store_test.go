@@ -13,7 +13,7 @@ import (
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	mcodec "github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/assert"
-	"go-ipld-prolly-trees/pkg/tree/schema"
+	"go-ipld-prolly-trees/pkg/schema"
 	"testing"
 )
 

@@ -5,7 +5,7 @@ import (
 	"context"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
-	. "go-ipld-prolly-trees/pkg/tree/schema"
+	. "go-ipld-prolly-trees/pkg/schema"
 	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
