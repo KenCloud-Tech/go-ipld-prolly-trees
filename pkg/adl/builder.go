@@ -1,10 +1,14 @@
 package adl
 
 import (
+	"context"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/mixins"
 	"go-ipld-prolly-trees/pkg/schema"
+	"go-ipld-prolly-trees/pkg/tree"
+	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
+	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
 var _ ipld.NodePrototype = &ProllyTreePrototype{}
@@ -24,14 +28,16 @@ var _ ipld.NodeAssembler = &Builder{}
 
 type Builder struct {
 	cfg  *schema.TreeConfig
-	lsys *ipld.LinkSystem
+	ns   types.NodeStore
+	fw   *tree.Framework
+	muts *tree.Mutations
 }
 
 func (b *Builder) WithLinkSystem(lsys *ipld.LinkSystem) *Builder {
 	if lsys == nil {
 		panic("nil linksystem")
 	}
-	b.lsys = lsys
+	b.ns = nodestore.NewLinkSystemNodeStore(lsys)
 	return b
 }
 
@@ -44,8 +50,13 @@ func (b *Builder) WithConfig(cfg *schema.TreeConfig) *Builder {
 }
 
 func (b *Builder) BeginMap(sizeHint int64) (datamodel.MapAssembler, error) {
-	//TODO implement me
-	return &TreeAssembler{}, nil
+	var err error
+	b.fw, err = tree.NewFramework(context.Background(), b.ns, b.cfg, nil)
+	if err != nil {
+		return nil, err
+	}
+	b.muts = tree.NewMutations()
+	return &TreeAssembler{muts: b.muts}, nil
 }
 
 func (b *Builder) BeginList(sizeHint int64) (datamodel.ListAssembler, error) {
@@ -91,8 +102,12 @@ func (b Builder) Prototype() datamodel.NodePrototype {
 }
 
 func (b Builder) Build() datamodel.Node {
-	//TODO implement me
-	panic("implement me")
+	err := b.fw.AppendFromMutations(context.Background(), b.muts)
+	prollyTree, err := b.fw.BuildTree(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	return Node{tree: prollyTree}
 }
 
 func (b Builder) Reset() {

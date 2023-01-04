@@ -10,6 +10,7 @@ import (
 	. "go-ipld-prolly-trees/pkg/schema"
 	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
 	"go-ipld-prolly-trees/pkg/tree/types"
+	"io"
 )
 
 type nodeBuffer struct {
@@ -419,6 +420,32 @@ func (fw *Framework) AppendBatch(ctx context.Context, keys [][]byte, vals []ipld
 	return nil
 }
 
+func (fw *Framework) AppendFromMutations(ctx context.Context, muts *Mutations) error {
+	if fw.done {
+		return fmt.Errorf("append data in done framework")
+	}
+	if muts == nil || len(muts.mutations) == 0 {
+		return fmt.Errorf("nil data")
+	}
+
+	for {
+		mut, err := muts.NextMutation()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if mut.Op != Add {
+			return fmt.Errorf("invalid option type")
+		}
+		err = fw.Append(ctx, mut.Key, mut.Val)
+		if err != nil {
+			return err
+		}
+	}
+}
+
 func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyTreeNode, error) {
 	if fw.done {
 		return nil, nil, fmt.Errorf("repeated action")
@@ -462,7 +489,7 @@ func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, error) {
 	if err != nil {
 		return nil, err
 	}
-	treeNodeCid, err := fw.builders[0].nodeStore.WriteRoot(ctx, prollyTreeNode, nil)
+	treeNodeCid, err := fw.builders[0].nodeStore.WriteTreeNode(ctx, prollyTreeNode, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +498,7 @@ func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, error) {
 		treeCid:    treeNodeCid,
 		rootCid:    prollyTreeNode.RootCid,
 		root:       rootNode,
-		ns:         fw.builders[0].nodeStore,
+		Ns:         fw.builders[0].nodeStore,
 		treeConfig: fw.builders[0].config,
 	}
 

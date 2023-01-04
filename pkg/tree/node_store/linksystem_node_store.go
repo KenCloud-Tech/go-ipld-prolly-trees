@@ -2,51 +2,25 @@ package nodestore
 
 import (
 	"context"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-ipld-prime"
-	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
-	. "go-ipld-prolly-trees/pkg/schema"
-	"go-ipld-prolly-trees/pkg/tree/linksystem"
-	"go-ipld-prolly-trees/pkg/tree/types"
-
+	"github.com/ipld/go-ipld-prime/linking"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	. "go-ipld-prolly-trees/pkg/schema"
+	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
-type StoreConfig struct {
-	CacheSize int
+var _ types.NodeStore = &LinkSystemNodeStore{}
+
+type LinkSystemNodeStore struct {
+	lsys *linking.LinkSystem
 }
 
-var _ types.NodeStore = &NodeStore{}
-
-type NodeStore struct {
-	bs    blockstore.Blockstore
-	lsys  *ipld.LinkSystem
-	cache *lru.Cache
+func NewLinkSystemNodeStore(lsys *linking.LinkSystem) *LinkSystemNodeStore {
+	return &LinkSystemNodeStore{lsys: lsys}
 }
 
-func NewNodeStore(bs blockstore.Blockstore, cfg *StoreConfig) (*NodeStore, error) {
-	lsys := linksystem.MkLinkSystem(bs)
-	ns := &NodeStore{
-		bs:   bs,
-		lsys: &lsys,
-	}
-	if cfg == nil {
-		cfg = &StoreConfig{}
-	}
-	if cfg.CacheSize != 0 {
-		var err error
-		ns.cache, err = lru.New(cfg.CacheSize)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return ns, nil
-}
-
-func (ns *NodeStore) WriteNode(ctx context.Context, nd *ProllyNode, prefix *cid.Prefix) (cid.Cid, error) {
+func (ns *LinkSystemNodeStore) WriteNode(ctx context.Context, nd *ProllyNode, prefix *cid.Prefix) (cid.Cid, error) {
 	var linkProto cidlink.LinkPrototype
 	if prefix == nil {
 		// default linkproto
@@ -64,24 +38,10 @@ func (ns *NodeStore) WriteNode(ctx context.Context, nd *ProllyNode, prefix *cid.
 	}
 	c := lnk.(cidlink.Link).Cid
 
-	go func() {
-		if ns.cache != nil {
-			ns.cache.Add(c, nd)
-		}
-	}()
-
 	return c, nil
 }
 
-func (ns *NodeStore) ReadNode(ctx context.Context, c cid.Cid) (*ProllyNode, error) {
-	var inCache bool
-	if ns.cache != nil {
-		var res interface{}
-		res, inCache = ns.cache.Get(c)
-		if inCache {
-			return res.(*ProllyNode), nil
-		}
-	}
+func (ns *LinkSystemNodeStore) ReadNode(ctx context.Context, c cid.Cid) (*ProllyNode, error) {
 	nd, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, ProllyNodePrototype.Representation())
 	if err != nil {
 		return nil, err
@@ -95,7 +55,7 @@ func (ns *NodeStore) ReadNode(ctx context.Context, c cid.Cid) (*ProllyNode, erro
 	return inode, nil
 }
 
-func (ns *NodeStore) WriteTreeNode(ctx context.Context, root *ProllyTreeNode, prefix *cid.Prefix) (cid.Cid, error) {
+func (ns *LinkSystemNodeStore) WriteTreeNode(ctx context.Context, root *ProllyTreeNode, prefix *cid.Prefix) (cid.Cid, error) {
 	var linkProto cidlink.LinkPrototype
 	if prefix == nil {
 		// default linkproto
@@ -113,24 +73,10 @@ func (ns *NodeStore) WriteTreeNode(ctx context.Context, root *ProllyTreeNode, pr
 	}
 	c := lnk.(cidlink.Link).Cid
 
-	go func() {
-		if ns.cache != nil {
-			ns.cache.Add(c, root)
-		}
-	}()
-
 	return c, nil
 }
 
-func (ns *NodeStore) ReadTreeNode(ctx context.Context, c cid.Cid) (*ProllyTreeNode, error) {
-	var inCache bool
-	if ns.cache != nil {
-		var res interface{}
-		res, inCache = ns.cache.Get(c)
-		if inCache {
-			return res.(*ProllyTreeNode), nil
-		}
-	}
+func (ns *LinkSystemNodeStore) ReadTreeNode(ctx context.Context, c cid.Cid) (*ProllyTreeNode, error) {
 	nd, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, ProllyTreePrototype.Representation())
 	if err != nil {
 		return nil, err
@@ -144,7 +90,7 @@ func (ns *NodeStore) ReadTreeNode(ctx context.Context, c cid.Cid) (*ProllyTreeNo
 	return root, nil
 }
 
-func (ns *NodeStore) ReadTreeConfig(ctx context.Context, c cid.Cid) (*TreeConfig, error) {
+func (ns *LinkSystemNodeStore) ReadTreeConfig(ctx context.Context, c cid.Cid) (*TreeConfig, error) {
 	icfg, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, ChunkConfigPrototype.Representation())
 	if err != nil {
 		return nil, err
@@ -158,7 +104,7 @@ func (ns *NodeStore) ReadTreeConfig(ctx context.Context, c cid.Cid) (*TreeConfig
 	return cfg, nil
 }
 
-func (ns *NodeStore) WriteTreeConfig(ctx context.Context, cfg *TreeConfig, prefix *cid.Prefix) (cid.Cid, error) {
+func (ns *LinkSystemNodeStore) WriteTreeConfig(ctx context.Context, cfg *TreeConfig, prefix *cid.Prefix) (cid.Cid, error) {
 	var linkProto cidlink.LinkPrototype
 	if prefix == nil {
 		// default linkproto
@@ -180,12 +126,5 @@ func (ns *NodeStore) WriteTreeConfig(ctx context.Context, cfg *TreeConfig, prefi
 	return c, nil
 }
 
-func (ns *NodeStore) Close() {
-}
-
-func TestMemNodeStore() types.NodeStore {
-	ds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	ns, _ := NewNodeStore(bs, &StoreConfig{CacheSize: 1 << 14})
-	return ns
+func (ns *LinkSystemNodeStore) Close() {
 }

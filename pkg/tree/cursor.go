@@ -103,7 +103,7 @@ func (cur *Cursor) Advance() error {
 
 func (cur *Cursor) GetKey() []byte {
 	if !cur.IsValid() {
-		panic("get key from invalid cursor")
+		panic("get Key from invalid cursor")
 	}
 	return cur.node.GetIdxKey(cur.idx)
 }

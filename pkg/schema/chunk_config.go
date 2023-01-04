@@ -12,9 +12,9 @@ const (
 type ChunkStrategy string
 
 const (
-	SuffixThreshold  byte = byte(0)
-	WeibullThreshold byte = byte(1)
-	RollingHash      byte = byte(2)
+	SuffixThreshold  = 0
+	WeibullThreshold = 1
+	RollingHash      = 2
 )
 
 // TreeConfig includes config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about

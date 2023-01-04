@@ -59,9 +59,9 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 	}
 
 	// new
-	//val, err := reloadTree.Get(testKeys[19999])
+	//Val, err := reloadTree.Get(testKeys[19999])
 	//assert.NoError(t, err)
-	//vnode, _ := val.AsBytes()
+	//vnode, _ := Val.AsBytes()
 	//trueVnode, _ := newValNode.AsBytes()
 	//assert.Equal(t, vnode, trueVnode)
 

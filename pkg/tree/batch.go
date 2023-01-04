@@ -16,16 +16,16 @@ func (k *key) Equal(other *key) bool {
 }
 
 const (
-	unknown op = 0
-	modify  op = 1
-	add     op = 2
-	remove  op = 3
+	Unknown op = 0
+	Modify  op = 1
+	Add     op = 2
+	Remove  op = 3
 )
 
 type Mutation struct {
-	key []byte
-	val ipld.Node
-	op  op
+	Key []byte
+	Val ipld.Node
+	Op  op
 }
 
 type Mutations struct {
@@ -46,7 +46,7 @@ func (m *Mutations) keyMutation(item []byte) (int, *Mutation) {
 	l, r := 0, length-1
 	for l < r {
 		mid := (l + r) / 2
-		midKey := m.mutations[mid].key
+		midKey := m.mutations[mid].Key
 		if m.compareFunc(midKey, item) == 0 {
 			return mid, m.mutations[mid]
 		} else if m.compareFunc(midKey, item) > 0 {
@@ -58,11 +58,11 @@ func (m *Mutations) keyMutation(item []byte) (int, *Mutation) {
 	return r, m.mutations[r]
 }
 
-func (m *Mutations) addMutation(mut *Mutation) error {
+func (m *Mutations) AddMutation(mut *Mutation) error {
 	//if already exist, replace it
 	if len(m.mutations) != 0 {
-		idx, oldMut := m.keyMutation(mut.key)
-		if m.compareFunc(oldMut.key, mut.key) == 0 {
+		idx, oldMut := m.keyMutation(mut.Key)
+		if m.compareFunc(oldMut.Key, mut.Key) == 0 {
 			m.mutations[idx] = mut
 			return nil
 		}
@@ -70,7 +70,7 @@ func (m *Mutations) addMutation(mut *Mutation) error {
 
 	m.mutations = append(m.mutations, mut)
 	sort.Slice(m.mutations, func(i, j int) bool {
-		if DefaultCompareFunc(m.mutations[i].key, m.mutations[j].key) < 0 {
+		if DefaultCompareFunc(m.mutations[i].Key, m.mutations[j].Key) < 0 {
 			return true
 		}
 		return false
@@ -90,9 +90,9 @@ func (m *Mutations) NextMutation() (*Mutation, error) {
 
 func (m *Mutations) Get(item []byte) (ipld.Node, error) {
 	_, mut := m.keyMutation(item)
-	if m.compareFunc(mut.key, item) == 0 {
-		if mut.op != remove {
-			return mut.val, nil
+	if m.compareFunc(mut.Key, item) == 0 {
+		if mut.Op != Remove {
+			return mut.Val, nil
 		}
 	}
 	return nil, nil
@@ -100,7 +100,7 @@ func (m *Mutations) Get(item []byte) (ipld.Node, error) {
 
 func (m *Mutations) Has(item []byte) (bool, error) {
 	_, mut := m.keyMutation(item)
-	if m.compareFunc(mut.key, item) == 0 {
+	if m.compareFunc(mut.Key, item) == 0 {
 		return true, nil
 	}
 	return false, nil

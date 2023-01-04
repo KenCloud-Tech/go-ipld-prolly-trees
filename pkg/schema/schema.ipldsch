@@ -12,16 +12,16 @@ type ProllyRoot struct{
     # root ProllyNode of tree
     RootCid &ProllyNode
     # config about the tree
-    ConfigCid &ChunkConfig
+    ConfigCid &TreeConfig
 }
 
 type SuffixThresholdConfig struct {
     chunkingFactor Int
 } representation tuple
 
-# Chunk Config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
+# Tree Config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
 # the splitter
-type ChunkConfig struct{
+type TreeConfig struct{
     strategyType    Int
     minNodeSize     Int
     maxNodeSize     Int

@@ -86,15 +86,15 @@ func (p *SuffixSplitter) Reset() {
 //	return ws.isBoundary
 //}
 //
-//func (ws *WeibullSplitter) Append(key, val []byte) error {
+//func (ws *WeibullSplitter) Append(Key, Val []byte) error {
 //	// can't append until reset splitter after boundary generated
 //	if ws.isBoundary {
 //		return fmt.Errorf("boundary generated but not reset")
 //	}
 //	// the function may be configurable
-//	hash := xxh3.Hash(append(key, val...))
+//	hash := xxh3.Hash(append(Key, Val...))
 //
-//	itemSize := len(key) + len(val)
+//	itemSize := len(Key) + len(Val)
 //	ws.totalItemsSize += itemSize
 //
 //	// can not split
