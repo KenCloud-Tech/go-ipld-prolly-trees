@@ -49,7 +49,7 @@ func (b *Builder) WithConfig(cfg *schema.TreeConfig) *Builder {
 	return b
 }
 
-func (b *Builder) BeginMap(sizeHint int64) (datamodel.MapAssembler, error) {
+func (b *Builder) BeginMap(_ int64) (datamodel.MapAssembler, error) {
 	var err error
 	b.fw, err = tree.NewFramework(context.Background(), b.ns, b.cfg, nil)
 	if err != nil {
@@ -91,17 +91,15 @@ func (b *Builder) AssignLink(link datamodel.Link) error {
 	return mixins.MapAssembler{TypeName: "ProllyTreeADL.Node"}.AssignLink(link)
 }
 
-func (b Builder) AssignNode(node datamodel.Node) error {
-	//TODO implement me
+func (b *Builder) AssignNode(node datamodel.Node) error {
 	panic("implement me")
 }
 
-func (b Builder) Prototype() datamodel.NodePrototype {
-	//TODO implement me
-	panic("implement me")
+func (b *Builder) Prototype() datamodel.NodePrototype {
+	return ProllyTreePrototype{}
 }
 
-func (b Builder) Build() datamodel.Node {
+func (b *Builder) Build() datamodel.Node {
 	err := b.fw.AppendFromMutations(context.Background(), b.muts)
 	prollyTree, err := b.fw.BuildTree(context.Background())
 	if err != nil {
@@ -110,7 +108,8 @@ func (b Builder) Build() datamodel.Node {
 	return Node{tree: prollyTree}
 }
 
-func (b Builder) Reset() {
-	//TODO implement me
-	panic("implement me")
+func (b *Builder) Reset() {
+	b.ns = nil
+	b.fw = nil
+	b.muts = nil
 }

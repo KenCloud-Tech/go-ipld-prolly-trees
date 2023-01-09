@@ -1,6 +1,7 @@
 package tree
 
 import (
+	"fmt"
 	"github.com/ipld/go-ipld-prime"
 	"go-ipld-prolly-trees/pkg/schema"
 	"io"
@@ -30,6 +31,7 @@ type Mutation struct {
 
 type Mutations struct {
 	mutations   []*Mutation
+	finish      bool
 	compareFunc schema.CompareFunc
 }
 
@@ -59,6 +61,10 @@ func (m *Mutations) keyMutation(item []byte) (int, *Mutation) {
 }
 
 func (m *Mutations) AddMutation(mut *Mutation) error {
+	if m.finish {
+		return fmt.Errorf("can not add mutation after finished")
+	}
+
 	//if already exist, replace it
 	if len(m.mutations) != 0 {
 		idx, oldMut := m.keyMutation(mut.Key)
@@ -76,6 +82,10 @@ func (m *Mutations) AddMutation(mut *Mutation) error {
 		return false
 	})
 	return nil
+}
+
+func (m *Mutations) Finish() {
+	m.finish = true
 }
 
 func (m *Mutations) NextMutation() (*Mutation, error) {

@@ -14,11 +14,19 @@ var _ datamodel.Node = &Node{}
 var _ adl.ADL = &Node{}
 
 type Node struct {
+	*schema.ProllyTreeNode
 	tree *tree.ProllyTree
 }
 
 func (n Node) WithLinkSystem(lsys *ipld.LinkSystem) *Node {
 	n.tree.Ns = nodestore.NewLinkSystemNodeStore(lsys)
+	if n.tree == nil {
+		var err error
+		n.tree, err = tree.LoadProllyTreeFromRootNode(n.ProllyTreeNode, n.tree.Ns)
+		if err != nil {
+			panic(err)
+		}
+	}
 	return &n
 }
 

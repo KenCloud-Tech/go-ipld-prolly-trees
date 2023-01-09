@@ -171,6 +171,9 @@ func (pt *ProllyTree) Delete(ctx context.Context, key []byte) error {
 }
 
 func (pt *ProllyTree) Rebuild(ctx context.Context) error {
+	// avoid wrong adding mutation while rebuilding
+	pt.mutations.Finish()
+
 	mut, err := pt.mutations.NextMutation()
 	if err != nil {
 		return err

@@ -5,6 +5,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
+	"github.com/ipld/go-ipld-prime/node/mixins"
 	"go-ipld-prolly-trees/pkg/tree"
 )
 
@@ -16,33 +17,28 @@ type TreeAssembler struct {
 }
 
 func (t *TreeAssembler) AssembleKey() datamodel.NodeAssembler {
-	//TODO implement me
 	return &keyAssembler{ta: t}
 }
 
 func (t *TreeAssembler) AssembleValue() datamodel.NodeAssembler {
-	//TODO implement me
 	return &valueAssembler{ta: t}
 }
 
 func (t *TreeAssembler) AssembleEntry(k string) (datamodel.NodeAssembler, error) {
-	//TODO implement me
-	panic("implement me")
+	return nil, fmt.Errorf("not supported")
 }
 
 func (t *TreeAssembler) Finish() error {
-	//TODO implement me
-	panic("implement me")
+	t.muts.Finish()
+	return nil
 }
 
 func (t *TreeAssembler) KeyPrototype() datamodel.NodePrototype {
-	//TODO implement me
-	panic("implement me")
+	return basicnode.Prototype.Bytes
 }
 
 func (t *TreeAssembler) ValuePrototype(k string) datamodel.NodePrototype {
-	//TODO implement me
-	panic("implement me")
+	return basicnode.Prototype.Any
 }
 
 var _ ipld.NodeAssembler = &keyAssembler{}
@@ -52,33 +48,28 @@ type keyAssembler struct {
 }
 
 func (k *keyAssembler) BeginMap(sizeHint int64) (datamodel.MapAssembler, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.BytesAssembler{TypeName: "bytes"}.BeginMap(sizeHint)
 }
 
 func (k *keyAssembler) BeginList(sizeHint int64) (datamodel.ListAssembler, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.BytesAssembler{TypeName: "bytes"}.BeginList(sizeHint)
+
 }
 
 func (k *keyAssembler) AssignNull() error {
-	//TODO implement me
-	panic("implement me")
+	return mixins.BytesAssembler{TypeName: "bytes"}.AssignNull()
 }
 
 func (k *keyAssembler) AssignBool(b bool) error {
-	//TODO implement me
-	panic("implement me")
+	return mixins.BytesAssembler{TypeName: "bytes"}.AssignBool(b)
 }
 
 func (k *keyAssembler) AssignInt(i int64) error {
-	//TODO implement me
-	panic("implement me")
+	return mixins.BytesAssembler{TypeName: "bytes"}.AssignInt(i)
 }
 
 func (k *keyAssembler) AssignFloat(f float64) error {
-	//TODO implement me
-	panic("implement me")
+	return mixins.BytesAssembler{TypeName: "bytes"}.AssignFloat(f)
 }
 
 func (k *keyAssembler) AssignString(s string) error {
@@ -92,18 +83,24 @@ func (k *keyAssembler) AssignBytes(bytes []byte) error {
 }
 
 func (k *keyAssembler) AssignLink(link datamodel.Link) error {
-	//TODO implement me
-	panic("implement me")
+	return mixins.BytesAssembler{TypeName: "bytes"}.AssignLink(link)
 }
 
 func (k *keyAssembler) AssignNode(node datamodel.Node) error {
-	//TODO implement me
-	panic("implement me")
+	bytes, err := node.AsBytes()
+	if err == nil {
+		return k.AssignBytes(bytes)
+	}
+	str, err := node.AsString()
+	if err == nil {
+		return k.AssignString(str)
+	}
+
+	return fmt.Errorf("unsupported key type: %s", node.Kind().String())
 }
 
 func (k *keyAssembler) Prototype() datamodel.NodePrototype {
-	//TODO implement me
-	panic("implement me")
+	return basicnode.Prototype.Bytes
 }
 
 var _ ipld.NodeAssembler = &valueAssembler{}
@@ -188,6 +185,5 @@ func (v *valueAssembler) AssignNode(node datamodel.Node) error {
 }
 
 func (v *valueAssembler) Prototype() datamodel.NodePrototype {
-	//TODO implement me
-	panic("implement me")
+	return basicnode.Prototype.Any
 }
