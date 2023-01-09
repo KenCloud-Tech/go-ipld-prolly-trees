@@ -5,25 +5,25 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
-	"go-ipld-prolly-trees/pkg/schema"
-	"go-ipld-prolly-trees/pkg/tree/node_store"
 	"math/rand"
 	"testing"
 )
 
 func TestProllyTreeBuildAndReload(t *testing.T) {
 	ctx := context.Background()
-	ns := nodestore.TestMemNodeStore()
-	cfg := schema.DefaultChunkConfig()
-	framwork, err := NewFramework(ctx, ns, cfg, nil)
+	ns := TestMemNodeStore()
+	bns := ns.(*BlockNodeStore)
+
+	cfg := DefaultChunkConfig()
+	framwork, err := NewFramework(ctx, bns, cfg, nil)
 	assert.NoError(t, err)
 
 	testKeys, testVals := RandomTestData(100000)
 	err = framwork.AppendBatch(ctx, testKeys, testVals)
 	assert.NoError(t, err)
-	tree, err := framwork.BuildTree(ctx)
+	tree, treeCid, err := framwork.BuildTree(ctx)
 	assert.NoError(t, err)
-	oldTreeCid := tree.treeCid
+	oldTreeCid := treeCid
 
 	for i := 0; i < 100000; i++ {
 		idx := rand.Intn(100000)
@@ -41,16 +41,16 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 	err = tree.Put(ctx, testKeys[19999], newValNode)
 	assert.NoError(t, err)
 
-	err = tree.Rebuild(ctx)
+	newTreeCid, err := tree.Rebuild(ctx)
 	assert.NoError(t, err)
 
-	reloadTree, err := LoadProllyTreeFromRootCid(tree.treeCid, ns)
+	reloadTree, err := LoadProllyTreeFromRootCid(oldTreeCid, bns)
 	assert.NoError(t, err)
+	newTree, err := LoadProllyTreeFromRootCid(newTreeCid, bns)
+	assert.NoError(t, err)
+	t.Log(newTree.root)
 	for i := 0; i < 100000; i++ {
 		idx := rand.Intn(100000)
-		//if idx == 19999 {
-		//	continue
-		//}
 		val, err := reloadTree.Get(testKeys[idx])
 		assert.NoError(t, err)
 		vnode, _ := val.AsBytes()
@@ -58,15 +58,8 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 		assert.Equal(t, vnode, trueVnode)
 	}
 
-	// new
-	//Val, err := reloadTree.Get(testKeys[19999])
-	//assert.NoError(t, err)
-	//vnode, _ := Val.AsBytes()
-	//trueVnode, _ := newValNode.AsBytes()
-	//assert.Equal(t, vnode, trueVnode)
-
 	// old
-	reloadOldTree, err := LoadProllyTreeFromRootCid(oldTreeCid, ns)
+	reloadOldTree, err := LoadProllyTreeFromRootCid(oldTreeCid, bns)
 	assert.NoError(t, err)
 	val, err := reloadOldTree.Get(testKeys[19999])
 	assert.NoError(t, err)
@@ -80,7 +73,7 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 	assert.NoError(t, err)
 	err = tree.Put(ctx, []byte("testkey123321"), insertVnode)
 	assert.Equal(t, vnode, trueVnode)
-	err = tree.Rebuild(ctx)
+	_, err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
 
 	res, err := tree.Get([]byte("testkey123321"))
@@ -117,7 +110,7 @@ func TestProllyTreeMutate(t *testing.T) {
 		err = tree.Put(ctx, testKeys[i], valNd)
 	}
 
-	err = tree.Rebuild(ctx)
+	_, err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
 
 	for i := 0; i < len(testAddKeys); i++ {

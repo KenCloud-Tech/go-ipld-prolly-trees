@@ -5,8 +5,6 @@ import (
 	"context"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
-	. "go-ipld-prolly-trees/pkg/schema"
-	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
 var DefaultCompareFunc CompareFunc = bytes.Compare
@@ -14,7 +12,7 @@ var DefaultCompareFunc CompareFunc = bytes.Compare
 type Cursor struct {
 	node   *ProllyNode
 	idx    int
-	ns     types.NodeStore
+	ns     NodeStore
 	parent *Cursor
 }
 
@@ -43,7 +41,7 @@ func (cur *Cursor) GetLink() cid.Cid {
 	return getCidFromIpldNode(cur.node.Values[cur.idx])
 }
 
-func CursorAtItem(n *ProllyNode, item []byte, cp CompareFunc, ns types.NodeStore) (*Cursor, error) {
+func CursorAtItem(n *ProllyNode, item []byte, cp CompareFunc, ns NodeStore) (*Cursor, error) {
 	cur := &Cursor{
 		node:   n,
 		idx:    n.KeyIndex(item, cp),

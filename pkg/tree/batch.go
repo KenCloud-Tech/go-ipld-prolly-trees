@@ -3,7 +3,6 @@ package tree
 import (
 	"fmt"
 	"github.com/ipld/go-ipld-prime"
-	"go-ipld-prolly-trees/pkg/schema"
 	"io"
 	"sort"
 )
@@ -32,7 +31,7 @@ type Mutation struct {
 type Mutations struct {
 	mutations   []*Mutation
 	finish      bool
-	compareFunc schema.CompareFunc
+	compareFunc CompareFunc
 }
 
 func NewMutations() *Mutations {

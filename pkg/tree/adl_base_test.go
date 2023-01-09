@@ -1,4 +1,4 @@
-package adl
+package tree
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ func testLinkSystem(bs blockstore.Blockstore) *ipld.LinkSystem {
 }
 
 func TestCreateAndBuildUse(t *testing.T) {
-	prototype := &ProllyTreePrototype{}
+	prototype := &ProllyTreeADLPrototype{}
 	builder := prototype.NewBuilder()
 	ptBuilder := builder.(*Builder)
 	ptBuilder = ptBuilder.WithLinkSystem(testLinkSystem(blockstore.NewBlockstore(datastore.NewMapDatastore())))

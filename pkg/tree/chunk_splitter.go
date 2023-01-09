@@ -3,7 +3,6 @@ package tree
 import (
 	"fmt"
 	"github.com/zeebo/xxh3"
-	. "go-ipld-prolly-trees/pkg/schema"
 )
 
 type Splitter interface {

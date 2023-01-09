@@ -1,15 +1,15 @@
-package nodestore
+package tree
 
 import (
 	mcodec "github.com/multiformats/go-multicodec"
 	"github.com/zeebo/assert"
-	"go-ipld-prolly-trees/pkg/schema"
+
 	"testing"
 )
 
 func TestNodeCoder(t *testing.T) {
 	cd := NewNodeCoder()
-	err := cd.InitEncoder(schema.DefaultLinkProto.Codec)
+	err := cd.InitEncoder(defaultLinkProto.Codec)
 	assert.NoError(t, err)
 	ipldNd, err := prollyNode.ToNode()
 	assert.NoError(t, err)

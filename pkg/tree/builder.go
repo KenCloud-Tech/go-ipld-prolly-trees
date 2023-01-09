@@ -1,23 +1,19 @@
-package adl
+package tree
 
 import (
 	"context"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/mixins"
-	"go-ipld-prolly-trees/pkg/schema"
-	"go-ipld-prolly-trees/pkg/tree"
-	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
-	"go-ipld-prolly-trees/pkg/tree/types"
 )
 
-var _ ipld.NodePrototype = &ProllyTreePrototype{}
+var _ ipld.NodePrototype = &ProllyTreeADLPrototype{}
 
-type ProllyTreePrototype struct {
+type ProllyTreeADLPrototype struct {
 }
 
-func (p ProllyTreePrototype) NewBuilder() datamodel.NodeBuilder {
-	cfg := schema.DefaultChunkConfig()
+func (p ProllyTreeADLPrototype) NewBuilder() datamodel.NodeBuilder {
+	cfg := DefaultChunkConfig()
 	return &Builder{
 		cfg: cfg,
 	}
@@ -27,21 +23,21 @@ var _ ipld.NodeBuilder = &Builder{}
 var _ ipld.NodeAssembler = &Builder{}
 
 type Builder struct {
-	cfg  *schema.TreeConfig
-	ns   types.NodeStore
-	fw   *tree.Framework
-	muts *tree.Mutations
+	cfg  *TreeConfig
+	ns   NodeStore
+	fw   *Framework
+	muts *Mutations
 }
 
 func (b *Builder) WithLinkSystem(lsys *ipld.LinkSystem) *Builder {
 	if lsys == nil {
 		panic("nil linksystem")
 	}
-	b.ns = nodestore.NewLinkSystemNodeStore(lsys)
+	b.ns = NewLinkSystemNodeStore(lsys)
 	return b
 }
 
-func (b *Builder) WithConfig(cfg *schema.TreeConfig) *Builder {
+func (b *Builder) WithConfig(cfg *TreeConfig) *Builder {
 	if cfg == nil {
 		panic("nil config")
 	}
@@ -51,11 +47,11 @@ func (b *Builder) WithConfig(cfg *schema.TreeConfig) *Builder {
 
 func (b *Builder) BeginMap(_ int64) (datamodel.MapAssembler, error) {
 	var err error
-	b.fw, err = tree.NewFramework(context.Background(), b.ns, b.cfg, nil)
+	b.fw, err = NewFramework(context.Background(), b.ns, b.cfg, nil)
 	if err != nil {
 		return nil, err
 	}
-	b.muts = tree.NewMutations()
+	b.muts = NewMutations()
 	return &TreeAssembler{muts: b.muts}, nil
 }
 
@@ -96,16 +92,16 @@ func (b *Builder) AssignNode(node datamodel.Node) error {
 }
 
 func (b *Builder) Prototype() datamodel.NodePrototype {
-	return ProllyTreePrototype{}
+	return ProllyTreeADLPrototype{}
 }
 
 func (b *Builder) Build() datamodel.Node {
 	err := b.fw.AppendFromMutations(context.Background(), b.muts)
-	prollyTree, err := b.fw.BuildTree(context.Background())
+	prollyTree, _, err := b.fw.BuildTree(context.Background())
 	if err != nil {
 		panic(err)
 	}
-	return Node{tree: prollyTree}
+	return prollyTree
 }
 
 func (b *Builder) Reset() {

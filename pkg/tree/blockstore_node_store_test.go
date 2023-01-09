@@ -1,4 +1,4 @@
-package nodestore
+package tree
 
 import (
 	"bytes"
@@ -13,11 +13,10 @@ import (
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	mcodec "github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/assert"
-	"go-ipld-prolly-trees/pkg/schema"
 	"testing"
 )
 
-var prollyNode = &schema.ProllyNode{
+var prollyNode = &ProllyNode{
 	Keys: [][]byte{
 		[]byte("123k"),
 		[]byte("1234k"),
@@ -31,7 +30,7 @@ var prollyNode = &schema.ProllyNode{
 
 func TestIPLDNodeStoreLoad(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	ns, err := NewNodeStore(bs, &StoreConfig{CacheSize: 1 << 10})
+	ns, err := NewBlockNodeStore(bs, &StoreConfig{CacheSize: 1 << 10})
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -69,7 +68,7 @@ func TestCidPrefixAndEncoder(t *testing.T) {
 	ipldNode, err := prollyNode.ToNode()
 	assert.NoError(t, err)
 
-	prefix := schema.DefaultLinkProto.Prefix
+	prefix := DefaultLinkProto.Prefix
 
 	_, err = ns.WriteNode(context.Background(), prollyNode, &prefix)
 	assert.NoError(t, err)

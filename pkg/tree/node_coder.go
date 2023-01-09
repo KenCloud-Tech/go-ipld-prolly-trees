@@ -1,4 +1,4 @@
-package nodestore
+package tree
 
 import (
 	"bytes"

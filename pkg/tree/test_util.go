@@ -5,8 +5,6 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
-	"go-ipld-prolly-trees/pkg/schema"
-	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
 	"math/rand"
 	"sort"
 	"testing"
@@ -59,15 +57,15 @@ func RandomTestData(count int) ([][]byte, []ipld.Node) {
 
 func BuildTestTreeFromData(t *testing.T, keys [][]byte, vals []ipld.Node) *ProllyTree {
 	ctx := context.Background()
-	ns := nodestore.TestMemNodeStore()
-	cfg := schema.DefaultChunkConfig()
+	ns := TestMemNodeStore()
+	cfg := DefaultChunkConfig()
 	cfg.Strategy.Suffix.ChunkingFactor = 10
 	framwork, err := NewFramework(ctx, ns, cfg, nil)
 	assert.NoError(t, err)
 
 	err = framwork.AppendBatch(ctx, keys, vals)
 	assert.NoError(t, err)
-	tree, err := framwork.BuildTree(ctx)
+	tree, _, err := framwork.BuildTree(ctx)
 	assert.NoError(t, err)
 
 	return tree

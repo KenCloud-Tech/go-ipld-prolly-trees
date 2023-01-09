@@ -1,4 +1,4 @@
-package schema
+package tree
 
 import "github.com/ipfs/go-cid"
 

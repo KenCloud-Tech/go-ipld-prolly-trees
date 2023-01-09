@@ -7,15 +7,12 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
-	. "go-ipld-prolly-trees/pkg/schema"
-	nodestore "go-ipld-prolly-trees/pkg/tree/node_store"
-	"go-ipld-prolly-trees/pkg/tree/types"
 	"io"
 )
 
 type nodeBuffer struct {
 	nd          ProllyNode
-	nodeCoder   *nodestore.NodeCoder
+	nodeCoder   *NodeCoder
 	maxNodeSize int
 	minNodeSize int
 }
@@ -70,16 +67,16 @@ type LevelBuilder struct {
 	isLeaf        bool
 	cursor        *Cursor
 	nodeBuffer    *nodeBuffer
-	nodeCoder     *nodestore.NodeCoder
+	nodeCoder     *NodeCoder
 	cidprefix     *cid.Prefix
 	parentBuilder *LevelBuilder
-	nodeStore     types.NodeStore
+	nodeStore     NodeStore
 	splitter      Splitter
 	framework     *Framework
 	done          bool
 }
 
-func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, config *TreeConfig, frameWork *Framework) (*LevelBuilder, error) {
+func newLevelBuilder(ctx context.Context, isLeaf bool, ns NodeStore, config *TreeConfig, frameWork *Framework) (*LevelBuilder, error) {
 	splitter := NewSplitterFromConfig(config)
 
 	nb := &nodeBuffer{
@@ -105,7 +102,7 @@ func newLevelBuilder(ctx context.Context, isLeaf bool, ns types.NodeStore, confi
 	return lb, nil
 }
 
-func newLevelBuilderWithCursor(ctx context.Context, isLeaf bool, ns types.NodeStore, config *TreeConfig, frameWork *Framework, cur *Cursor) (*LevelBuilder, error) {
+func newLevelBuilderWithCursor(ctx context.Context, isLeaf bool, ns NodeStore, config *TreeConfig, frameWork *Framework, cur *Cursor) (*LevelBuilder, error) {
 	if cur == nil {
 		return nil, fmt.Errorf("nil cursor")
 	}
@@ -168,7 +165,7 @@ func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node)
 	return false, nil
 }
 
-func buildAndSaveNode(ctx context.Context, nb *nodeBuffer, prefix *cid.Prefix, ns types.NodeStore) (*ProllyNode, cid.Cid, error) {
+func buildAndSaveNode(ctx context.Context, nb *nodeBuffer, prefix *cid.Prefix, ns NodeStore) (*ProllyNode, cid.Cid, error) {
 	if !(nb.count() > 0) {
 		return nil, cid.Undef, fmt.Errorf("invalid nodeBuffer to build")
 	}
@@ -329,7 +326,7 @@ func getCidFromIpldNode(n ipld.Node) cid.Cid {
 	return link.(cidlink.Link).Cid
 }
 
-func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuffer) (*ProllyNode, cid.Cid, error) {
+func getCanonicalRoot(ctx context.Context, ns NodeStore, nb *nodeBuffer) (*ProllyNode, cid.Cid, error) {
 	if nb.count() != 1 {
 		return nil, cid.Undef, fmt.Errorf("invalid nodeBuffer count")
 	}
@@ -350,12 +347,12 @@ func getCanonicalRoot(ctx context.Context, ns types.NodeStore, nb *nodeBuffer) (
 type Framework struct {
 	done      bool
 	cidPrefix *cid.Prefix
-	nodeCoder *nodestore.NodeCoder
+	nodeCoder *NodeCoder
 	configCid cid.Cid
 	builders  []*LevelBuilder
 }
 
-func NewFramework(ctx context.Context, ns types.NodeStore, cfg *TreeConfig, cur *Cursor) (*Framework, error,
+func NewFramework(ctx context.Context, ns NodeStore, cfg *TreeConfig, cur *Cursor) (*Framework, error,
 ) {
 	if cfg == nil {
 		return nil, fmt.Errorf("nil config")
@@ -364,7 +361,7 @@ func NewFramework(ctx context.Context, ns types.NodeStore, cfg *TreeConfig, cur 
 	if err != nil {
 		return nil, err
 	}
-	nodeCoder := nodestore.NewNodeCoder()
+	nodeCoder := NewNodeCoder()
 	// ignore error, we can register the codec later
 	_ = nodeCoder.InitEncoder(cidprefix.Codec)
 
@@ -446,7 +443,7 @@ func (fw *Framework) AppendFromMutations(ctx context.Context, muts *Mutations) e
 	}
 }
 
-func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyTreeNode, error) {
+func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyTree, error) {
 	if fw.done {
 		return nil, nil, fmt.Errorf("repeated action")
 	}
@@ -473,38 +470,37 @@ func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyTreeNode, 
 			return nil, nil, err
 		}
 		if over {
-			root := &ProllyTreeNode{
-				RootCid:   rootCid,
-				ConfigCid: fw.configCid,
+			tree := &ProllyTree{
+				ProllyTreeNode: ProllyTreeNode{
+					RootCid:   rootCid,
+					ConfigCid: fw.configCid,
+				},
 			}
-			return rootNode, root, nil
+			return rootNode, tree, nil
 		}
 
 		i++
 	}
 }
 
-func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, error) {
-	rootNode, prollyTreeNode, err := fw.finish(ctx)
+func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, cid.Cid, error) {
+	rootNode, prollyTree, err := fw.finish(ctx)
 	if err != nil {
-		return nil, err
-	}
-	treeNodeCid, err := fw.builders[0].nodeStore.WriteTreeNode(ctx, prollyTreeNode, nil)
-	if err != nil {
-		return nil, err
+		return nil, cid.Undef, err
 	}
 
-	tree := &ProllyTree{
-		treeCid:    treeNodeCid,
-		rootCid:    prollyTreeNode.RootCid,
-		root:       rootNode,
-		Ns:         fw.builders[0].nodeStore,
-		treeConfig: fw.builders[0].config,
+	prollyTree.root = rootNode
+	prollyTree.Ns = fw.builders[0].nodeStore
+	prollyTree.treeConfig = fw.builders[0].config
+
+	treeCid, err := fw.builders[0].nodeStore.WriteTree(ctx, prollyTree, nil)
+	if err != nil {
+		return nil, cid.Undef, err
 	}
 
 	fw.builders = nil
 
-	return tree, nil
+	return prollyTree, treeCid, nil
 }
 
 func (fw *Framework) appendToCursor(ctx context.Context, cur *Cursor) error {

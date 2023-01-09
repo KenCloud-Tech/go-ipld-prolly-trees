@@ -1,4 +1,4 @@
-package schema
+package tree
 
 import (
 	"errors"
@@ -53,7 +53,7 @@ func (n *ProllyTreeNode) ToNode() (nd ipld.Node, err error) {
 	return
 }
 
-func UnwrapProllyRoot(node ipld.Node) (*ProllyTreeNode, error) {
+func UnwrapProllyTree(node ipld.Node) (*ProllyTree, error) {
 	if node.Prototype() != ProllyTreePrototype {
 		prBuilder := ProllyTreePrototype.NewBuilder()
 		err := prBuilder.AssignNode(node)
@@ -67,7 +67,7 @@ func UnwrapProllyRoot(node ipld.Node) (*ProllyTreeNode, error) {
 	if !ok || nd == nil {
 		return nil, fmt.Errorf("unwrapped node does not match schema.ProllyTreeNode")
 	}
-	return nd, nil
+	return &ProllyTree{ProllyTreeNode: *nd}, nil
 }
 
 func toError(r interface{}) error {
