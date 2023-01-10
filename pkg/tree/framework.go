@@ -489,9 +489,9 @@ func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, cid.Cid, error
 		return nil, cid.Undef, err
 	}
 
-	prollyTree.root = rootNode
+	prollyTree.root = *rootNode
 	prollyTree.Ns = fw.builders[0].nodeStore
-	prollyTree.treeConfig = fw.builders[0].config
+	prollyTree.treeConfig = *fw.builders[0].config
 
 	treeCid, err := fw.builders[0].nodeStore.WriteTree(ctx, prollyTree, nil)
 	if err != nil {

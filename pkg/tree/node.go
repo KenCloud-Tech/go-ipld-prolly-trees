@@ -15,11 +15,6 @@ type ProllyNode struct {
 	Values []ipld.Node
 }
 
-type Entry struct {
-	Key   []byte
-	Value ipld.Node
-}
-
 func (n *ProllyNode) IsLeafNode() bool {
 	return n.IsLeaf
 }

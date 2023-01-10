@@ -16,30 +16,26 @@ var (
 
 type ProllyTree struct {
 	ProllyRoot
-	root       *ProllyNode
+	root       ProllyNode
 	Ns         NodeStore
-	treeConfig *TreeConfig
+	treeConfig TreeConfig
 
 	mutating  bool
 	mutations *Mutations
 }
 
 func (pt *ProllyTree) loadProllyTreeFromRootNode(ns NodeStore) error {
-	//if pt.root == nil {
 	prollyRootNode, err := ns.ReadNode(context.Background(), pt.RootCid)
 	if err != nil {
 		return err
 	}
-	pt.root = prollyRootNode
-	//}
+	pt.root = *prollyRootNode
 
-	//if pt.treeConfig == nil {
 	config, err := ns.ReadTreeConfig(context.Background(), pt.ConfigCid)
 	if err != nil {
 		return err
 	}
-	pt.treeConfig = config
-	//}
+	pt.treeConfig = *config
 
 	pt.Ns = ns
 	return nil
@@ -65,7 +61,7 @@ func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
 		}
 	}
 
-	cur, err := CursorAtItem(pt.root, key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.Ns)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +73,7 @@ func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
 }
 
 func (pt *ProllyTree) Search(prefix []byte) (*SearchIterator, error) {
-	cur, err := CursorAtItem(pt.root, prefix, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, prefix, DefaultCompareFunc, pt.Ns)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +114,7 @@ func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error 
 	if !pt.mutating {
 		return fmt.Errorf("please call ProllyTree.Mutate firstly")
 	}
-	cur, err := CursorAtItem(pt.root, key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.Ns)
 	if err != nil {
 		return err
 	}
@@ -149,7 +145,7 @@ func (pt *ProllyTree) Delete(ctx context.Context, key []byte) error {
 	if !pt.mutating {
 		return fmt.Errorf("please call ProllyTree.Mutate firstly")
 	}
-	cur, err := CursorAtItem(pt.root, key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.Ns)
 	if err != nil {
 		return err
 	}
@@ -179,11 +175,11 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, err
 	}
-	cur, err := CursorAtItem(pt.root, mut.Key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.Ns)
 	if err != nil {
 		return cid.Undef, err
 	}
-	framework, err := NewFramework(ctx, pt.Ns, pt.treeConfig, cur)
+	framework, err := NewFramework(ctx, pt.Ns, &pt.treeConfig, cur)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -226,7 +222,7 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 				return cid.Undef, err
 			}
 
-			cur, err = CursorAtItem(pt.root, mut.Key, DefaultCompareFunc, pt.Ns)
+			cur, err = CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.Ns)
 			if err != nil {
 				return cid.Undef, err
 			}

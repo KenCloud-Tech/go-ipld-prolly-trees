@@ -5,6 +5,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/adl"
 	"github.com/ipld/go-ipld-prime/datamodel"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
+	"github.com/ipld/go-ipld-prime/node/mixins"
 )
 
 var _ datamodel.Node = &ProllyTree{}
@@ -16,19 +18,12 @@ func (pt *ProllyTree) WithLinkSystem(lsys *ipld.LinkSystem) *ProllyTree {
 	if err != nil {
 		panic(err)
 	}
-	//if pt.tree == nil {
-	//	var err error
-	//	pt.tree, err = LoadProllyTreeFromRootNode(pt.ProllyRoot, pt.tree.Ns)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//}
+
 	return pt
 }
 
 func (pt *ProllyTree) Substrate() datamodel.Node {
-	//TODO implement me
-	panic("implement me")
+	return bindnode.Wrap(&pt.ProllyRoot, ProllyTreePrototype.Type())
 }
 
 func (pt *ProllyTree) Kind() datamodel.Kind {
@@ -49,9 +44,8 @@ func (pt *ProllyTree) LookupByNode(key datamodel.Node) (datamodel.Node, error) {
 	return nil, fmt.Errorf("invalid ipld.node as key:%v", key)
 }
 
-func (pt *ProllyTree) LookupByIndex(idx int64) (datamodel.Node, error) {
-	//TODO implement me
-	panic("implement me")
+func (pt *ProllyTree) LookupByIndex(int64) (datamodel.Node, error) {
+	return mixins.Map{TypeName: "ProllyTree"}.LookupByIndex(0)
 }
 
 func (pt *ProllyTree) LookupBySegment(seg datamodel.PathSegment) (datamodel.Node, error) {
@@ -64,53 +58,43 @@ func (pt *ProllyTree) MapIterator() datamodel.MapIterator {
 }
 
 func (pt *ProllyTree) ListIterator() datamodel.ListIterator {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.ListIterator()
 }
 
 func (pt *ProllyTree) Length() int64 {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (pt *ProllyTree) IsAbsent() bool {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.IsAbsent()
 }
 
 func (pt *ProllyTree) IsNull() bool {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.IsNull()
 }
 
 func (pt *ProllyTree) AsBool() (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.AsBool()
 }
 
 func (pt *ProllyTree) AsInt() (int64, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.AsInt()
 }
 
 func (pt *ProllyTree) AsFloat() (float64, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.AsFloat()
 }
 
 func (pt *ProllyTree) AsString() (string, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.AsString()
 }
 
 func (pt *ProllyTree) AsBytes() ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.AsBytes()
 }
 
 func (pt *ProllyTree) AsLink() (datamodel.Link, error) {
-	//TODO implement me
-	panic("implement me")
+	return mixins.Map{TypeName: "ProllyTree"}.AsLink()
 }
 
 func (pt *ProllyTree) Prototype() datamodel.NodePrototype {

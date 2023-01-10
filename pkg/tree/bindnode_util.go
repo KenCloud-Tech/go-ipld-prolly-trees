@@ -42,14 +42,14 @@ func UnwrapProllyNode(node ipld.Node) (*ProllyNode, error) {
 	return nd, nil
 }
 
-func (n *ProllyTree) ToNode() (nd ipld.Node, err error) {
+func (pt *ProllyTree) ToNode() (nd ipld.Node, err error) {
 	// TODO: remove the panic recovery once IPLD bindnode is stabilized.
 	defer func() {
 		if r := recover(); r != nil {
 			err = toError(r)
 		}
 	}()
-	nd = bindnode.Wrap(&n.ProllyRoot, ProllyTreePrototype.Type()).Representation()
+	nd = bindnode.Wrap(&pt.ProllyRoot, ProllyTreePrototype.Type()).Representation()
 	return
 }
 
