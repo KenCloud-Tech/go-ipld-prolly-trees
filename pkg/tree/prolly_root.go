@@ -2,7 +2,7 @@ package tree
 
 import "github.com/ipfs/go-cid"
 
-type ProllyTreeNode struct {
+type ProllyRoot struct {
 	RootCid   cid.Cid
 	ConfigCid cid.Cid
 }

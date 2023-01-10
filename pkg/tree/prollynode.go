@@ -10,11 +10,6 @@ import (
 var _ datamodel.Node = &ProllyTree{}
 var _ adl.ADL = &ProllyTree{}
 
-//type Node struct {
-//	*ProllyTreeNode
-//	tree *ProllyTree
-//}
-
 func (pt *ProllyTree) WithLinkSystem(lsys *ipld.LinkSystem) *ProllyTree {
 	pt.Ns = NewLinkSystemNodeStore(lsys)
 	err := pt.loadProllyTreeFromRootNode(pt.Ns)
@@ -23,7 +18,7 @@ func (pt *ProllyTree) WithLinkSystem(lsys *ipld.LinkSystem) *ProllyTree {
 	}
 	//if pt.tree == nil {
 	//	var err error
-	//	pt.tree, err = LoadProllyTreeFromRootNode(pt.ProllyTreeNode, pt.tree.Ns)
+	//	pt.tree, err = LoadProllyTreeFromRootNode(pt.ProllyRoot, pt.tree.Ns)
 	//	if err != nil {
 	//		panic(err)
 	//	}

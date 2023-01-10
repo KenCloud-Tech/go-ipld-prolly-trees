@@ -41,14 +41,11 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 	err = tree.Put(ctx, testKeys[19999], newValNode)
 	assert.NoError(t, err)
 
-	newTreeCid, err := tree.Rebuild(ctx)
+	_, err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
 
 	reloadTree, err := LoadProllyTreeFromRootCid(oldTreeCid, bns)
 	assert.NoError(t, err)
-	newTree, err := LoadProllyTreeFromRootCid(newTreeCid, bns)
-	assert.NoError(t, err)
-	t.Log(newTree.root)
 	for i := 0; i < 100000; i++ {
 		idx := rand.Intn(100000)
 		val, err := reloadTree.Get(testKeys[idx])

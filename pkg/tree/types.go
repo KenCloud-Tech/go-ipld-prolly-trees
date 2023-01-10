@@ -3,7 +3,6 @@ package tree
 import (
 	"context"
 	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/multiformats/go-multicodec"
 )
@@ -20,10 +19,6 @@ type NodeStore interface {
 	ReadTreeConfig(ctx context.Context, c cid.Cid) (*TreeConfig, error)
 
 	Close()
-}
-
-type BindNode interface {
-	ToNode() (nd ipld.Node, err error)
 }
 
 var DefaultLinkProto = cidlink.LinkPrototype{

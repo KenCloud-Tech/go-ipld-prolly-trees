@@ -28,6 +28,6 @@ func init() {
 		panic(fmt.Errorf("failed to load schema: %w", err))
 	}
 	ProllyNodePrototype = bindnode.Prototype(&ProllyNode{}, typeSystem.TypeByName("ProllyNode"))
-	ProllyTreePrototype = bindnode.Prototype(&ProllyTreeNode{}, typeSystem.TypeByName("ProllyTreeNode"))
+	ProllyTreePrototype = bindnode.Prototype(&ProllyRoot{}, typeSystem.TypeByName("ProllyRoot"))
 	ChunkConfigPrototype = bindnode.Prototype(&TreeConfig{}, typeSystem.TypeByName("TreeConfig"))
 }

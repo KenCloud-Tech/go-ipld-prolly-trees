@@ -9,12 +9,6 @@ import (
 
 type op int
 
-type key []byte
-
-func (k *key) Equal(other *key) bool {
-	return DefaultCompareFunc(*k, *other) == 0
-}
-
 const (
 	Unknown op = 0
 	Modify  op = 1

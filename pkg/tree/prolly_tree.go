@@ -15,7 +15,7 @@ var (
 )
 
 type ProllyTree struct {
-	ProllyTreeNode
+	ProllyRoot
 	root       *ProllyNode
 	Ns         NodeStore
 	treeConfig *TreeConfig
@@ -245,7 +245,7 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	pt.ProllyTreeNode = newTree.ProllyTreeNode
+	pt.ProllyRoot = newTree.ProllyRoot
 	pt.root = newTree.root
 	pt.treeConfig = newTree.treeConfig
 	pt.Ns = newTree.Ns

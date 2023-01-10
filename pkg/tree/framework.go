@@ -471,7 +471,7 @@ func (fw *Framework) finish(ctx context.Context) (*ProllyNode, *ProllyTree, erro
 		}
 		if over {
 			tree := &ProllyTree{
-				ProllyTreeNode: ProllyTreeNode{
+				ProllyRoot: ProllyRoot{
 					RootCid:   rootCid,
 					ConfigCid: fw.configCid,
 				},

@@ -55,7 +55,7 @@ func (b *Builder) BeginMap(_ int64) (datamodel.MapAssembler, error) {
 	return &TreeAssembler{muts: b.muts}, nil
 }
 
-func (b *Builder) BeginList(sizeHint int64) (datamodel.ListAssembler, error) {
+func (b *Builder) BeginList(int64) (datamodel.ListAssembler, error) {
 	return mixins.MapAssembler{TypeName: "ProllyTreeADL.Node"}.BeginList(0)
 }
 

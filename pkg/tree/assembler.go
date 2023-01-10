@@ -108,12 +108,12 @@ type valueAssembler struct {
 	ta *TreeAssembler
 }
 
-func (v *valueAssembler) BeginMap(sizeHint int64) (datamodel.MapAssembler, error) {
+func (v *valueAssembler) BeginMap(int64) (datamodel.MapAssembler, error) {
 	return nil, fmt.Errorf("unsupported value type")
 
 }
 
-func (v *valueAssembler) BeginList(sizeHint int64) (datamodel.ListAssembler, error) {
+func (v *valueAssembler) BeginList(int64) (datamodel.ListAssembler, error) {
 	return nil, fmt.Errorf("unsupported value type")
 
 }
