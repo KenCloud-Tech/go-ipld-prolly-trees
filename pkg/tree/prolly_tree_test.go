@@ -154,6 +154,30 @@ func TestProllyTreeMutate(t *testing.T) {
 	}
 }
 
+func TestMutateSearch(t *testing.T) {
+	ctx := context.Background()
+	testKeys, testVals := RandomTestData(10000)
+
+	tree := BuildTestTreeFromData(t, testKeys[:5000], testVals[:5000])
+	err := tree.Mutate()
+	assert.NoError(t, err)
+
+	for i := 5000; i < 10000; i++ {
+		err = tree.Put(ctx, testKeys[i], testVals[i])
+		assert.NoError(t, err)
+	}
+
+	for i := 0; i < 10000; i++ {
+		v, err := tree.Get(testKeys[i])
+		assert.NoError(t, err)
+		vBytes, err := v.AsBytes()
+		assert.NoError(t, err)
+		tvBytes, err := testVals[i].AsBytes()
+		assert.NoError(t, err)
+		assert.Equal(t, vBytes, tvBytes)
+	}
+}
+
 func TestPrefixCompare(t *testing.T) {
 	prefixA := []byte("key1")
 	prefixB := []byte("key1a")

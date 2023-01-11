@@ -97,6 +97,9 @@ func (b *Builder) Prototype() datamodel.NodePrototype {
 
 func (b *Builder) Build() datamodel.Node {
 	err := b.fw.AppendFromMutations(context.Background(), b.muts)
+	if err != nil {
+		panic(err)
+	}
 	prollyTree, _, err := b.fw.BuildTree(context.Background())
 	if err != nil {
 		panic(err)

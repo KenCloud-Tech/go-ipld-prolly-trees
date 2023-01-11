@@ -57,6 +57,9 @@ func TestCreateAndBuildUse(t *testing.T) {
 	err = va.AssignString("testval1")
 	assert.NoError(t, err)
 
+	err = ma.Finish()
+	assert.NoError(t, err)
+
 	n := builder.Build()
 	vn, err := n.LookupByString("testkey1")
 	assert.NoError(t, err)

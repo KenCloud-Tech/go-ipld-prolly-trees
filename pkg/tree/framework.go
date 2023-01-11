@@ -421,7 +421,7 @@ func (fw *Framework) AppendFromMutations(ctx context.Context, muts *Mutations) e
 	if fw.done {
 		return fmt.Errorf("append data in done framework")
 	}
-	if muts == nil || len(muts.mutations) == 0 {
+	if muts == nil || len(muts.muts) == 0 {
 		return fmt.Errorf("nil data")
 	}
 

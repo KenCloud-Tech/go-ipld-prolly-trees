@@ -38,6 +38,7 @@ func TestMutations(t *testing.T) {
 	assert.NoError(t, err)
 	err = ms.AddMutation(mut4)
 	assert.NoError(t, err)
+	ms.Finish()
 
 	preMut, err := ms.NextMutation()
 	assert.NoError(t, err)
@@ -63,6 +64,8 @@ func TestMutationsSorted(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	}
+
+	mutations.Finish()
 
 	preMut, err := mutations.NextMutation()
 	assert.NoError(t, err)
