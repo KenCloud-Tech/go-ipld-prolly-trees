@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -72,8 +71,25 @@ func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
 	return cur.GetValue(), nil
 }
 
-func (pt *ProllyTree) Search(prefix []byte) (*SearchIterator, error) {
-	cur, err := CursorAtItem(&pt.root, prefix, DefaultCompareFunc, pt.Ns)
+func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*SearchIterator, error) {
+	if start == nil && end == nil {
+		return nil, fmt.Errorf("empty start and end key")
+	}
+	var err error
+	if start == nil {
+		start, err = pt.firstKey()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if end == nil {
+		end, err = pt.lastKey()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cur, err := CursorAtItem(&pt.root, start, DefaultCompareFunc, pt.Ns)
 	if err != nil {
 		return nil, err
 	}
@@ -83,13 +99,14 @@ func (pt *ProllyTree) Search(prefix []byte) (*SearchIterator, error) {
 			break
 		}
 		key := cur.GetKey()
-		if !bytes.HasPrefix(key, prefix) {
+
+		if DefaultCompareFunc(key, start) < 0 || DefaultCompareFunc(key, end) > 0 {
 			break
 		}
 
 		val := cur.GetValue()
 
-		iter.ReceivePair(key, val)
+		iter.receivePair(key, val)
 
 		err = cur.Advance()
 		if err != nil {
@@ -250,4 +267,20 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	pt.mutations = nil
 
 	return newTreeCid, nil
+}
+
+func (pt *ProllyTree) firstKey() ([]byte, error) {
+	n := &pt.root
+	var err error
+	for !n.IsLeaf {
+		n, err = pt.Ns.ReadNode(context.Background(), n.GetIdxLink(0))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return n.GetIdxKey(0), nil
+}
+
+func (pt *ProllyTree) lastKey() ([]byte, error) {
+	return pt.root.GetIdxKey(pt.root.ItemCount() - 1), nil
 }

@@ -1,6 +1,7 @@
 package tree
 
 import (
+	"context"
 	"fmt"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/adl"
@@ -53,8 +54,15 @@ func (pt *ProllyTree) LookupBySegment(seg datamodel.PathSegment) (datamodel.Node
 }
 
 func (pt *ProllyTree) MapIterator() datamodel.MapIterator {
-	//TODO implement me
-	panic("implement me")
+	start, err := pt.firstKey()
+	if err != nil {
+		panic(err)
+	}
+	iter, err := pt.Search(context.Background(), start, nil)
+	if err != nil {
+		panic(err)
+	}
+	return iter
 }
 
 func (pt *ProllyTree) ListIterator() datamodel.ListIterator {

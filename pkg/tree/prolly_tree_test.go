@@ -1,6 +1,7 @@
 package tree
 
 import (
+	"bytes"
 	"context"
 	"github.com/ipld/go-ipld-prime"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
@@ -9,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestProllyTreeBuildAndReload(t *testing.T) {
+func TestProllyTreeRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	ns := TestMemNodeStore()
 	bns := ns.(*BlockNodeStore)
@@ -24,6 +25,13 @@ func TestProllyTreeBuildAndReload(t *testing.T) {
 	tree, treeCid, err := framwork.BuildTree(ctx)
 	assert.NoError(t, err)
 	oldTreeCid := treeCid
+
+	firstKey, err := tree.firstKey()
+	assert.NoError(t, err)
+	assert.Equal(t, testKeys[0], firstKey)
+	lastKey, err := tree.lastKey()
+	assert.NoError(t, err)
+	assert.Equal(t, testKeys[len(testKeys)-1], lastKey)
 
 	for i := 0; i < 100000; i++ {
 		idx := rand.Intn(100000)
@@ -144,4 +152,18 @@ func TestProllyTreeMutate(t *testing.T) {
 			assert.Equal(t, valBytes, trueBytes)
 		}
 	}
+}
+
+func TestPrefixCompare(t *testing.T) {
+	prefixA := []byte("key1")
+	prefixB := []byte("key1a")
+	prefixC := []byte("key1bsada")
+	prefixD := []byte("key2asada")
+
+	t.Log(DefaultCompareFunc(prefixA, prefixB))
+	t.Log(DefaultCompareFunc(prefixA, prefixC))
+	t.Log(DefaultCompareFunc(prefixB, prefixC))
+	t.Log(DefaultCompareFunc(prefixD, prefixC))
+	t.Log(bytes.HasPrefix(prefixC, prefixB))
+	t.Log(bytes.HasPrefix(prefixC, prefixA))
 }

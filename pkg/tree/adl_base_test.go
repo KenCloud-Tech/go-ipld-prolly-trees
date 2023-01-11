@@ -66,3 +66,40 @@ func TestCreateAndBuildUse(t *testing.T) {
 
 	t.Logf("%s", res)
 }
+
+func TestMapIterator(t *testing.T) {
+	prototype := &ProllyTreeADLPrototype{}
+	builder := prototype.NewBuilder()
+	ptBuilder := builder.(*Builder)
+	ptBuilder = ptBuilder.WithLinkSystem(testLinkSystem(blockstore.NewBlockstore(datastore.NewMapDatastore())))
+	ma, err := ptBuilder.BeginMap(0)
+	assert.NoError(t, err)
+
+	count := 10000
+	testKeys, testVals := RandomTestData(count)
+	for i := 0; i < count; i++ {
+		assert.NoError(t, ma.AssembleKey().AssignBytes(testKeys[i]))
+		assert.NoError(t, ma.AssembleValue().AssignNode(testVals[i]))
+	}
+	assert.NoError(t, ma.Finish())
+	tree := ptBuilder.Build()
+	iter := tree.MapIterator()
+
+	idx := 0
+	for !iter.Done() {
+		k, v, err := iter.Next()
+		assert.NoError(t, err)
+		kBytes, err := k.AsBytes()
+		assert.NoError(t, err)
+		assert.Equal(t, kBytes, testKeys[idx])
+		vBytes, err := v.AsBytes()
+		assert.NoError(t, err)
+		tvBytes, err := testVals[idx].AsBytes()
+		assert.NoError(t, err)
+
+		assert.Equal(t, vBytes, tvBytes)
+		idx++
+	}
+	assert.Equal(t, idx, count)
+
+}
