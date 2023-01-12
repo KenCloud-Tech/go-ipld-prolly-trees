@@ -3,6 +3,7 @@ package tree
 import (
 	"context"
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/multiformats/go-multicodec"
 )
@@ -17,6 +18,8 @@ type NodeStore interface {
 
 	WriteTreeConfig(ctx context.Context, cfg *TreeConfig, prefix *cid.Prefix) (cid.Cid, error)
 	ReadTreeConfig(ctx context.Context, c cid.Cid) (*TreeConfig, error)
+
+	LinkSystem() *ipld.LinkSystem
 
 	Close()
 }

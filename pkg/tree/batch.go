@@ -10,10 +10,9 @@ import (
 type op int
 
 const (
-	Unknown op = 0
-	Modify  op = 1
-	Add     op = 2
-	Remove  op = 3
+	Modify op = 1
+	Add    op = 2
+	Remove op = 3
 )
 
 type Mutation struct {
@@ -22,6 +21,7 @@ type Mutation struct {
 	Op  op
 }
 
+// Mutations receives batch updates such as put, delete....., also used in ADL builder
 type Mutations struct {
 	muts        []*Mutation
 	kmap        map[string]int
@@ -79,6 +79,8 @@ func (m *Mutations) Finish() {
 		}
 		return false
 	})
+
+	m.kmap = nil
 }
 
 func (m *Mutations) NextMutation() (*Mutation, error) {
@@ -95,19 +97,22 @@ func (m *Mutations) NextMutation() (*Mutation, error) {
 }
 
 func (m *Mutations) Get(item []byte) (ipld.Node, error) {
-	_, mut := m.keyMutation(item)
-	if m.compareFunc(mut.Key, item) == 0 {
-		if mut.Op != Remove {
-			return mut.Val, nil
+	if !m.finish {
+		idx, exist := m.kmap[string(item)]
+		if exist {
+			mut := m.muts[idx]
+			if mut.Op != Remove {
+				return mut.Val, nil
+			}
+		}
+	} else {
+		_, mut := m.keyMutation(item)
+		if m.compareFunc(mut.Key, item) == 0 {
+			if mut.Op != Remove {
+				return mut.Val, nil
+			}
 		}
 	}
-	return nil, nil
-}
 
-func (m *Mutations) Has(item []byte) (bool, error) {
-	_, mut := m.keyMutation(item)
-	if m.compareFunc(mut.Key, item) == 0 {
-		return true, nil
-	}
-	return false, nil
+	return nil, nil
 }

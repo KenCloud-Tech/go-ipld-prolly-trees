@@ -10,7 +10,7 @@ func TestSearchIterator(t *testing.T) {
 	ctx := context.Background()
 	testKeys, testVals := RandomTestData(50001)
 
-	tree := BuildTestTreeFromData(t, testKeys, testVals)
+	tree, _ := BuildTestTreeFromData(t, testKeys, testVals)
 
 	start, end := testKeys[5], testKeys[50000]
 	iter, err := tree.Search(ctx, start, end)

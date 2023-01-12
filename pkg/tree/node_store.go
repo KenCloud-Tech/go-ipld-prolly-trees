@@ -25,6 +25,10 @@ type BlockNodeStore struct {
 	cache *lru.Cache
 }
 
+func (ns *BlockNodeStore) LinkSystem() *ipld.LinkSystem {
+	return ns.lsys
+}
+
 func NewBlockNodeStore(bs blockstore.Blockstore, cfg *StoreConfig) (*BlockNodeStore, error) {
 	lsys := linksystem.MkLinkSystem(bs)
 	ns := &BlockNodeStore{
@@ -193,6 +197,10 @@ var _ NodeStore = &LinkSystemNodeStore{}
 
 type LinkSystemNodeStore struct {
 	lsys *linking.LinkSystem
+}
+
+func (ns *LinkSystemNodeStore) LinkSystem() *ipld.LinkSystem {
+	return ns.lsys
 }
 
 func NewLinkSystemNodeStore(lsys *linking.LinkSystem) *LinkSystemNodeStore {

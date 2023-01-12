@@ -2,24 +2,12 @@ package tree
 
 import (
 	"bytes"
-	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
-	"github.com/multiformats/go-multicodec"
 	"github.com/zeebo/assert"
 	"testing"
 )
-
-var defaultLinkProto = cidlink.LinkPrototype{
-	Prefix: cid.Prefix{
-		Version:  1,
-		Codec:    uint64(multicodec.DagCbor),
-		MhType:   uint64(multicodec.Sha2_256),
-		MhLength: 16,
-	},
-}
 
 func TestGenIPLDNode(t *testing.T) {
 

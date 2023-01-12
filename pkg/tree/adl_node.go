@@ -14,8 +14,8 @@ var _ datamodel.Node = &ProllyTree{}
 var _ adl.ADL = &ProllyTree{}
 
 func (pt *ProllyTree) WithLinkSystem(lsys *ipld.LinkSystem) *ProllyTree {
-	pt.Ns = NewLinkSystemNodeStore(lsys)
-	err := pt.loadProllyTreeFromRootNode(pt.Ns)
+	pt.ns = NewLinkSystemNodeStore(lsys)
+	err := pt.loadProllyTreeFromRootNode(pt.ns)
 	if err != nil {
 		panic(err)
 	}

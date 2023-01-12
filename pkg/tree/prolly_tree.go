@@ -16,7 +16,7 @@ var (
 type ProllyTree struct {
 	ProllyRoot
 	root       ProllyNode
-	Ns         NodeStore
+	ns         NodeStore
 	treeConfig TreeConfig
 
 	mutating  bool
@@ -36,7 +36,7 @@ func (pt *ProllyTree) loadProllyTreeFromRootNode(ns NodeStore) error {
 	}
 	pt.treeConfig = *config
 
-	pt.Ns = ns
+	pt.ns = ns
 	return nil
 }
 
@@ -60,7 +60,7 @@ func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
 		}
 	}
 
-	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.ns)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
 	return cur.GetValue(), nil
 }
 
-func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*SearchIterator, error) {
+func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*Iterator, error) {
 	if start == nil && end == nil {
 		return nil, fmt.Errorf("empty start and end key")
 	}
@@ -89,11 +89,11 @@ func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*Se
 		}
 	}
 
-	cur, err := CursorAtItem(&pt.root, start, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, start, DefaultCompareFunc, pt.ns)
 	if err != nil {
 		return nil, err
 	}
-	iter := NewSearchIterator()
+	iter := NewIterator()
 	for {
 		if !cur.IsValid() {
 			break
@@ -131,7 +131,7 @@ func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error 
 	if !pt.mutating {
 		return fmt.Errorf("please call ProllyTree.Mutate firstly")
 	}
-	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.ns)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (pt *ProllyTree) Delete(ctx context.Context, key []byte) error {
 	if !pt.mutating {
 		return fmt.Errorf("please call ProllyTree.Mutate firstly")
 	}
-	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.ns)
 	if err != nil {
 		return err
 	}
@@ -192,11 +192,11 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, err
 	}
-	cur, err := CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.Ns)
+	cur, err := CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.ns)
 	if err != nil {
 		return cid.Undef, err
 	}
-	framework, err := NewFramework(ctx, pt.Ns, &pt.treeConfig, cur)
+	framework, err := NewFramework(ctx, pt.ns, &pt.treeConfig, cur)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -239,7 +239,7 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 				return cid.Undef, err
 			}
 
-			cur, err = CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.Ns)
+			cur, err = CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.ns)
 			if err != nil {
 				return cid.Undef, err
 			}
@@ -261,7 +261,7 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	pt.ProllyRoot = newTree.ProllyRoot
 	pt.root = newTree.root
 	pt.treeConfig = newTree.treeConfig
-	pt.Ns = newTree.Ns
+	pt.ns = newTree.ns
 
 	pt.mutating = false
 	pt.mutations = nil
@@ -269,11 +269,16 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	return newTreeCid, nil
 }
 
+func (pt *ProllyTree) NodeStore() NodeStore {
+	return pt.ns
+}
+
+// get the first(smallest) key of the tree
 func (pt *ProllyTree) firstKey() ([]byte, error) {
 	n := &pt.root
 	var err error
 	for !n.IsLeaf {
-		n, err = pt.Ns.ReadNode(context.Background(), n.GetIdxLink(0))
+		n, err = pt.ns.ReadNode(context.Background(), n.GetIdxLink(0))
 		if err != nil {
 			return nil, err
 		}
@@ -281,6 +286,7 @@ func (pt *ProllyTree) firstKey() ([]byte, error) {
 	return n.GetIdxKey(0), nil
 }
 
+// get the last(largest) key of the tree
 func (pt *ProllyTree) lastKey() ([]byte, error) {
 	return pt.root.GetIdxKey(pt.root.ItemCount() - 1), nil
 }

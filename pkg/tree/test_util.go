@@ -2,6 +2,7 @@ package tree
 
 import (
 	"context"
+	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
@@ -55,7 +56,7 @@ func RandomTestData(count int) ([][]byte, []ipld.Node) {
 	return keys, vals
 }
 
-func BuildTestTreeFromData(t *testing.T, keys [][]byte, vals []ipld.Node) *ProllyTree {
+func BuildTestTreeFromData(t *testing.T, keys [][]byte, vals []ipld.Node) (*ProllyTree, cid.Cid) {
 	ctx := context.Background()
 	ns := TestMemNodeStore()
 	cfg := DefaultChunkConfig()
@@ -65,8 +66,8 @@ func BuildTestTreeFromData(t *testing.T, keys [][]byte, vals []ipld.Node) *Proll
 
 	err = framwork.AppendBatch(ctx, keys, vals)
 	assert.NoError(t, err)
-	tree, _, err := framwork.BuildTree(ctx)
+	tree, treeCid, err := framwork.BuildTree(ctx)
 	assert.NoError(t, err)
 
-	return tree
+	return tree, treeCid
 }

@@ -9,7 +9,7 @@ import (
 
 func TestNodeCoder(t *testing.T) {
 	cd := NewNodeCoder()
-	err := cd.InitEncoder(defaultLinkProto.Codec)
+	err := cd.InitEncoder(DefaultLinkProto.Codec)
 	assert.NoError(t, err)
 	ipldNd, err := prollyNode.ToNode()
 	assert.NoError(t, err)

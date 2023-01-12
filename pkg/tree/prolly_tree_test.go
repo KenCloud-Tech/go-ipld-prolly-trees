@@ -93,7 +93,7 @@ func TestProllyTreeMutate(t *testing.T) {
 	testKeys, testVals := RandomTestData(10000)
 	testAddKeys, testAddVals := RandomTestData(10000)
 
-	tree := BuildTestTreeFromData(t, testKeys, testVals)
+	tree, _ := BuildTestTreeFromData(t, testKeys, testVals)
 	err := tree.Mutate()
 	assert.NoError(t, err)
 	for i := 0; i < len(testAddKeys); i++ {
@@ -158,7 +158,7 @@ func TestMutateSearch(t *testing.T) {
 	ctx := context.Background()
 	testKeys, testVals := RandomTestData(10000)
 
-	tree := BuildTestTreeFromData(t, testKeys[:5000], testVals[:5000])
+	tree, _ := BuildTestTreeFromData(t, testKeys[:5000], testVals[:5000])
 	err := tree.Mutate()
 	assert.NoError(t, err)
 
