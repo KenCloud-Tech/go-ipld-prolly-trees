@@ -56,6 +56,12 @@ func genFixtures(count int, t *testing.T) {
 	assert.NoError(t, f.Close())
 }
 
+func TestGenFixtures(t *testing.T) {
+	t.SkipNow()
+	genFixtures(5, t)
+	genFixtures(10000, t)
+}
+
 type fixtureSet struct {
 	testKey [][]byte
 	testVal []ipld.Node

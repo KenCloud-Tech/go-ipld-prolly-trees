@@ -28,7 +28,7 @@ var prollyNode = &ProllyNode{
 	IsLeaf: true,
 }
 
-func TestIPLDNodeStoreLoad(t *testing.T) {
+func TestNodeStoreLoad(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	ns, err := NewBlockNodeStore(bs, &StoreConfig{CacheSize: 1 << 10})
 	assert.NoError(t, err)
@@ -61,6 +61,11 @@ func TestIPLDNodeStoreLoad(t *testing.T) {
 	assert.Equal(t, prollyNode.Keys, inode.Keys)
 	assert.Equal(t, prollyNode.Values, inode.Values)
 	assert.Equal(t, prollyNode.IsLeafNode(), inode.IsLeafNode())
+
+	cfg := DefaultChunkConfig()
+	c, err = ns.WriteTreeConfig(ctx, cfg, nil)
+	assert.NoError(t, err)
+
 }
 
 func TestCidPrefixAndEncoder(t *testing.T) {

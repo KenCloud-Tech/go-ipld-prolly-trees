@@ -27,9 +27,17 @@ type TreeConfig struct{
     maxNodeSize     Int
     maxPairsInNode  Int
     nodeCodec       Bytes
+    nodeCodec2       Prefix
     strategy        strategy
 } representation tuple
 
 type strategy union {
     | SuffixThresholdConfig     "suffix"
 } representation keyed
+
+type Prefix struct{
+    cidVersion Int
+    codec Int
+    hashFunction Int
+    hashLength nullable Int
+} representation tuple

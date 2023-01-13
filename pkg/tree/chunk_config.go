@@ -2,6 +2,7 @@ package tree
 
 import (
 	"fmt"
+	"github.com/ipfs/go-cid"
 )
 
 const (
@@ -25,7 +26,28 @@ type TreeConfig struct {
 	MaxNodeSize    int
 	MaxPairsInNode int
 	NodeCodec      []byte
+	NodeCodec2     NodeCodec
 	Strategy       strategy
+}
+
+type NodeCodec struct {
+	CidVersion   uint64
+	Codec        uint64
+	HashFunction uint64
+	HashLength   *int
+}
+
+func CodecFromCidPrefix(prefix cid.Prefix) NodeCodec {
+	var hl *int
+	if prefix.MhLength != -1 {
+		hl = &prefix.MhLength
+	}
+	return NodeCodec{
+		CidVersion:   prefix.Version,
+		Codec:        prefix.Codec,
+		HashFunction: prefix.MhType,
+		HashLength:   hl,
+	}
 }
 
 func (cfg *TreeConfig) Equal(_cfg *TreeConfig) bool {
@@ -44,6 +66,7 @@ func DefaultChunkConfig() *TreeConfig {
 		MaxPairsInNode: 1000,
 		StrategyType:   SuffixThreshold,
 		NodeCodec:      DefaultLinkProto.Prefix.Bytes(),
+		NodeCodec2:     CodecFromCidPrefix(DefaultLinkProto.Prefix),
 		Strategy: strategy{Suffix: &PrefixThresholdConfig{
 			ChunkingFactor: 10,
 		}},

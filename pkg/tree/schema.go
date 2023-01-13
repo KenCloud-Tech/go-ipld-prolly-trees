@@ -17,7 +17,6 @@ var (
 	ChunkConfigPrototype schema.TypedPrototype
 
 	ProllyTreePrototype schema.TypedPrototype
-
 	//go:embed schema.ipldsch
 	schemaBytes []byte
 )

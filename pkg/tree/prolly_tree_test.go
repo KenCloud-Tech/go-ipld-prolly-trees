@@ -86,6 +86,7 @@ func TestProllyTreeRoundTrip(t *testing.T) {
 	expectStr, _ := insertVnode.AsString()
 	resStr, _ := res.AsString()
 	assert.Equal(t, expectStr, resStr)
+
 }
 
 func TestProllyTreeMutate(t *testing.T) {
@@ -152,7 +153,15 @@ func TestProllyTreeMutate(t *testing.T) {
 			assert.Equal(t, valBytes, trueBytes)
 		}
 	}
+
+	tree = nil
 }
+
+//func TestJust(t *testing.T) {
+//	for i := 0; i < 2; i++ {
+//		TestProllyTreeMutate(t)
+//	}
+//}
 
 func TestMutateSearch(t *testing.T) {
 	ctx := context.Background()

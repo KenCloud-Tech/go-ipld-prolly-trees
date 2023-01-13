@@ -362,7 +362,7 @@ func NewFramework(ctx context.Context, ns NodeStore, cfg *TreeConfig, cur *Curso
 		return nil, err
 	}
 	nodeCoder := NewNodeCoder()
-	// ignore error, we can register the codec later
+	// ignore error, we can register the Codec later
 	_ = nodeCoder.InitEncoder(cidprefix.Codec)
 
 	configCid, err := ns.WriteTreeConfig(ctx, cfg, nil)
