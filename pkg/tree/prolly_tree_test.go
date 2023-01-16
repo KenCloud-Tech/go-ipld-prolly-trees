@@ -153,11 +153,9 @@ func TestProllyTreeMutate(t *testing.T) {
 			assert.Equal(t, valBytes, trueBytes)
 		}
 	}
-
-	tree = nil
 }
 
-func TestJust(t *testing.T) {
+func TestRepeatedMutate(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		TestProllyTreeMutate(t)
 	}

@@ -25,8 +25,7 @@ type TreeConfig struct {
 	MinNodeSize    int
 	MaxNodeSize    int
 	MaxPairsInNode int
-	NodeCodec      []byte
-	NodeCodec2     NodeCodec
+	NodeCodec      NodeCodec
 	Strategy       strategy
 }
 
@@ -35,6 +34,33 @@ type NodeCodec struct {
 	Codec        uint64
 	HashFunction uint64
 	HashLength   *int
+}
+
+func (nc *NodeCodec) ToCidPrefix() *cid.Prefix {
+	prefix := &cid.Prefix{
+		Version: nc.CidVersion,
+		Codec:   nc.Codec,
+		MhType:  nc.HashFunction,
+	}
+
+	if nc.HashLength != nil {
+		prefix.MhLength = *nc.HashLength
+	}
+	return prefix
+}
+
+func (nc *NodeCodec) Equal(another *NodeCodec) bool {
+	if nc.HashLength != nil && another.HashLength != nil {
+		if *nc.HashLength != *another.HashLength {
+			return false
+		}
+	} else if nc.HashLength == nil && another.HashLength == nil {
+	} else {
+		return false
+	}
+	return nc.Codec == another.Codec &&
+		nc.HashFunction == another.HashFunction &&
+		nc.CidVersion == another.CidVersion
 }
 
 func CodecFromCidPrefix(prefix cid.Prefix) NodeCodec {
@@ -50,13 +76,14 @@ func CodecFromCidPrefix(prefix cid.Prefix) NodeCodec {
 	}
 }
 
-func (cfg *TreeConfig) Equal(_cfg *TreeConfig) bool {
-	if cfg.StrategyType != _cfg.StrategyType ||
-		cfg.MinNodeSize != _cfg.MinNodeSize ||
-		cfg.MaxNodeSize != _cfg.MaxNodeSize {
+func (cfg *TreeConfig) Equal(another *TreeConfig) bool {
+	if cfg.StrategyType != another.StrategyType ||
+		cfg.MinNodeSize != another.MinNodeSize ||
+		cfg.MaxNodeSize != another.MaxNodeSize {
 		return false
 	}
-	return cfg.Strategy.Equal(&_cfg.Strategy, cfg.StrategyType)
+	return cfg.NodeCodec.Equal(&another.NodeCodec) &&
+		cfg.Strategy.Equal(&another.Strategy, cfg.StrategyType)
 }
 
 func DefaultChunkConfig() *TreeConfig {
@@ -65,8 +92,7 @@ func DefaultChunkConfig() *TreeConfig {
 		MaxNodeSize:    DefaultMaxChunkSize,
 		MaxPairsInNode: 1000,
 		StrategyType:   SuffixThreshold,
-		NodeCodec:      DefaultLinkProto.Prefix.Bytes(),
-		NodeCodec2:     CodecFromCidPrefix(DefaultLinkProto.Prefix),
+		NodeCodec:      CodecFromCidPrefix(DefaultLinkProto.Prefix),
 		Strategy: strategy{Suffix: &PrefixThresholdConfig{
 			ChunkingFactor: 10,
 		}},

@@ -1,10 +1,9 @@
 type ProllyNode struct {
-    # 0 for leaf nodes, and add 1 for parent level
+    # true for leaf nodes and false for branch nodes
     isLeaf Bool
-    # raw keys(keys/values input from users) for leaf node. For branch nodes, the key is last key in the child node,
-    # first key in the child node
+    # raw keys(input from users) for leaf node. For branch node, the key is last key in the child node
 	keys [Bytes]
-	# input data from users for leaf nodes, Link for branch nodes
+	# input data from users for leaf nodes, link(cid) for branch nodes
     values [Any]
 } representation tuple
 
@@ -26,8 +25,7 @@ type TreeConfig struct{
     minNodeSize     Int
     maxNodeSize     Int
     maxPairsInNode  Int
-    nodeCodec       Bytes
-    nodeCodec2       Prefix
+    nodeCodec       Prefix
     strategy        strategy
 } representation tuple
 
