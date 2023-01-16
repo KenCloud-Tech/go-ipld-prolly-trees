@@ -58,15 +58,20 @@ func genFixtures(count int, t *testing.T) {
 
 func TestGenFixtures(t *testing.T) {
 	t.SkipNow()
+	genFixtures(1, t)
 	genFixtures(5, t)
 	genFixtures(10000, t)
 }
 
 type fixtureSet struct {
+	// raw kv pairs
 	testKey [][]byte
 	testVal []ipld.Node
+	// the tree cid that saved in the fixtures(car file)
 	treeCid cid.Cid
-	ptree   *tree.ProllyTree
+	// prolly tree load from fixtures(car file)
+	ptree *tree.ProllyTree
+	// the car size
 	carSize int
 }
 
@@ -136,9 +141,11 @@ func loadFixture(dir string) (*fixtureSet, error) {
 func verifyTree(t *testing.T, fset *fixtureSet) {
 	ctx := context.Background()
 	ns := tree.TestMemNodeStore()
+	// get config
 	config, err := fset.ptree.NodeStore().ReadTreeConfig(context.Background(), fset.ptree.ConfigCid)
 	assert.NoError(t, err)
 
+	// rebuild the tree with same data and config
 	framework, err := tree.NewFramework(ctx, ns, config, nil)
 	assert.NoError(t, err)
 
@@ -147,10 +154,12 @@ func verifyTree(t *testing.T, fset *fixtureSet) {
 
 	rebuildTree, rTreeCid, err := framework.BuildTree(ctx)
 	assert.NoError(t, err)
+	// tree cid should equal with the saved tree cid
 	assert.Equal(t, rTreeCid, fset.treeCid)
 
 	buf := new(bytes.Buffer)
 	size, err := car2.TraverseV1(ctx, rebuildTree.NodeStore().LinkSystem(), rTreeCid, selectorparse.CommonSelector_ExploreAllRecursively, buf)
 	assert.NoError(t, err)
+	// car size should equal
 	assert.Equal(t, int(size), fset.carSize)
 }
