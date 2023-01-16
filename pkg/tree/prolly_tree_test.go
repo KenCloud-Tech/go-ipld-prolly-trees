@@ -157,11 +157,11 @@ func TestProllyTreeMutate(t *testing.T) {
 	tree = nil
 }
 
-//func TestJust(t *testing.T) {
-//	for i := 0; i < 2; i++ {
-//		TestProllyTreeMutate(t)
-//	}
-//}
+func TestJust(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		TestProllyTreeMutate(t)
+	}
+}
 
 func TestMutateSearch(t *testing.T) {
 	ctx := context.Background()

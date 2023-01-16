@@ -96,6 +96,7 @@ func (b *Builder) Prototype() datamodel.NodePrototype {
 }
 
 func (b *Builder) Build() datamodel.Node {
+	b.muts.Finish()
 	err := b.fw.AppendFromMutations(context.Background(), b.muts)
 	if err != nil {
 		panic(err)

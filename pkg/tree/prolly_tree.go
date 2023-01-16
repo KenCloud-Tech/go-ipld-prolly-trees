@@ -201,56 +201,62 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 	for {
-		if cur.IsValid() {
-			// Modify
-			if DefaultCompareFunc(cur.GetKey(), mut.Key) == 0 {
-				if mut.Op == Modify {
-					err := framework.Append(ctx, mut.Key, mut.Val)
-					if err != nil {
-						return cid.Undef, err
-					}
-					err = framework.AdvanceCursor(ctx)
-					if err != nil {
-						return cid.Undef, err
-					}
-				} else if mut.Op == Remove {
-					err = framework.AdvanceCursor(ctx)
-					if err != nil {
-						return cid.Undef, err
-					}
-				} else {
-					return cid.Undef, fmt.Errorf("invalid mutation: %#v", mut)
-				}
-			} else {
-				//Add new pair
-				if mut.Op == Add {
-					err := framework.Append(ctx, mut.Key, mut.Val)
-					if err != nil {
-						return cid.Undef, err
-					}
-				} else {
-					return cid.Undef, fmt.Errorf("invalid mutation: %#v", mut)
-				}
-			}
-			mut, err = pt.mutations.NextMutation()
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return cid.Undef, err
-			}
 
-			cur, err = CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.ns)
-			if err != nil {
-				return cid.Undef, err
+		if mut.Op == Add {
+			if cur.IsValid() && DefaultCompareFunc(cur.GetKey(), mut.Key) == 0 {
+				return cid.Undef, fmt.Errorf("can not add exist key in the tree")
 			}
-			// todo move cursor to next mutation location and append items between them
-			err = framework.appendToCursor(ctx, cur)
+			err := framework.Append(ctx, mut.Key, mut.Val)
 			if err != nil {
 				return cid.Undef, err
 			}
 		} else {
-			return cid.Undef, fmt.Errorf("invalid cursor")
+			if DefaultCompareFunc(cur.GetKey(), mut.Key) != 0 {
+				return cid.Undef, fmt.Errorf("modified or remove key should be the same with origin key")
+			}
+			if mut.Op == Modify {
+				err := framework.Append(ctx, mut.Key, mut.Val)
+				if err != nil {
+					return cid.Undef, err
+				}
+				err = framework.AdvanceCursor(ctx)
+				if err != nil {
+					return cid.Undef, err
+				}
+			} else if mut.Op == Remove {
+				err = framework.AdvanceCursor(ctx)
+				if err != nil {
+					return cid.Undef, err
+				}
+			} else {
+				return cid.Undef, fmt.Errorf("invalid mutation: %#v", mut)
+			}
 		}
+
+		mut, err = pt.mutations.NextMutation()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return cid.Undef, err
+		}
+
+		cur, err = CursorAtItem(&pt.root, mut.Key, DefaultCompareFunc, pt.ns)
+		if err != nil {
+			return cid.Undef, err
+		}
+		// the key is bigger than all keys in the tree, make it after the rear
+		if DefaultCompareFunc(cur.GetKey(), mut.Key) < 0 {
+			err = cur.Advance()
+			if err != nil {
+				return cid.Undef, err
+			}
+		}
+		// todo move cursor to next mutation location and append items between them
+		err = framework.appendToCursor(ctx, cur)
+		if err != nil {
+			return cid.Undef, err
+		}
+
 	}
 
 	newTree, newTreeCid, err := framework.BuildTree(ctx)

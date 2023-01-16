@@ -10,6 +10,7 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/zeebo/assert"
 	"io"
+	"strings"
 	"testing"
 )
 
@@ -56,6 +57,13 @@ func TestCreateAndBuildUse(t *testing.T) {
 	va := ma.AssembleValue()
 	err = va.AssignString("testval1")
 	assert.NoError(t, err)
+	// close and map Assembler, if assign value, get error
+	err = ma.Finish()
+	assert.NoError(t, err)
+	err = ma.AssembleKey().AssignString("testkey2")
+	assert.NoError(t, err)
+	err = ma.AssembleValue().AssignFloat(1.234)
+	assert.True(t, strings.Contains(err.Error(), "can not add mutation after finished"))
 
 	err = ma.Finish()
 	assert.NoError(t, err)

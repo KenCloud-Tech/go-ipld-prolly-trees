@@ -71,6 +71,10 @@ func (m *Mutations) AddMutation(mut *Mutation) error {
 }
 
 func (m *Mutations) Finish() {
+	// ignore repeated close
+	if m.finish == true {
+		return
+	}
 	m.finish = true
 
 	sort.Slice(m.muts, func(i, j int) bool {
