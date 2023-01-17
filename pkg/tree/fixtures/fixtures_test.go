@@ -3,7 +3,6 @@ package fixtures
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -11,6 +10,7 @@ import (
 	"github.com/ipld/go-car"
 	car2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"github.com/zeebo/assert"
@@ -19,39 +19,88 @@ import (
 	"testing"
 )
 
-func genFixtures(count int, t *testing.T) {
-	var res [2][][]byte
+func TestGenIPLDData(t *testing.T) {
+	count := 10000
+	ctx := context.Background()
 	testKeys, testVals := tree.RandomTestData(count)
-	res[0] = testKeys
-	var err error
-	for i := range testVals {
-		vbytes, err := testVals[i].AsBytes()
-		assert.NoError(t, err)
-		res[1] = append(res[1], vbytes)
+	builder := basicnode.Prototype.Map.NewBuilder()
+	ma, err := builder.BeginMap(int64(count))
+	assert.NoError(t, err)
+	for i := range testKeys {
+		assert.NoError(t, ma.AssembleKey().AssignString(string(testKeys[i])))
+		assert.NoError(t, ma.AssembleValue().AssignNode(testVals[i]))
 	}
 
-	dataBytes, err := json.Marshal(res)
+	assert.NoError(t, ma.Finish())
+	dataNode := builder.Build()
+
+	// the origin node keep order of pairs but will shuffle after serialize(deserialize)
+	iter := dataNode.MapIterator()
+	i := 0
+	for !iter.Done() {
+		k, v, err := iter.Next()
+		assert.NoError(t, err)
+		kString, err := k.AsString()
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(kString), testKeys[i])
+		vBytes, _ := v.AsBytes()
+		tBytes, _ := testVals[i].AsBytes()
+		assert.Equal(t, vBytes, tBytes)
+		i++
+	}
+
+	ns := tree.TestMemNodeStore()
+	lnk, err := ns.LinkSystem().Store(ipld.LinkContext{Ctx: ctx}, tree.DefaultLinkProto, dataNode)
+	assert.NoError(t, err)
+	dataNodeCid := lnk.(cidlink.Link).Cid
+	t.Log(dataNodeCid.String())
+
+	buf := new(bytes.Buffer)
+	_, err = car2.TraverseV1(context.Background(), ns.LinkSystem(), dataNodeCid, selectorparse.CommonSelector_ExploreAllRecursively, buf)
+	assert.NoError(t, err)
+}
+
+func genFixtures(count int, t *testing.T) {
+	ctx := context.Background()
+	testKeys, testVals := tree.RandomTestData(count)
+	builder := basicnode.Prototype.Map.NewBuilder()
+	ma, err := builder.BeginMap(int64(count))
+	assert.NoError(t, err)
+	for i := range testKeys {
+		assert.NoError(t, ma.AssembleKey().AssignString(string(testKeys[i])))
+		assert.NoError(t, ma.AssembleValue().AssignNode(testVals[i]))
+	}
+
+	assert.NoError(t, ma.Finish())
+	dataNode := builder.Build()
+
+	ptree, treeCid := tree.BuildTestTreeFromData(t, testKeys, testVals)
+	treeBuf := new(bytes.Buffer)
+	dataBuf := new(bytes.Buffer)
+	lsys := ptree.NodeStore().LinkSystem()
 	assert.NoError(t, err)
 
-	tree, treeCid := tree.BuildTestTreeFromData(t, testKeys, testVals)
-	buf := new(bytes.Buffer)
-	lsys := tree.NodeStore().LinkSystem()
+	lnk, err := lsys.Store(ipld.LinkContext{Ctx: ctx}, tree.DefaultLinkProto, dataNode)
 	assert.NoError(t, err)
-	_, err = car2.TraverseV1(context.Background(), lsys, treeCid, selectorparse.CommonSelector_ExploreAllRecursively, buf)
+	dataNodeCid := lnk.(cidlink.Link).Cid
+
+	_, err = car2.TraverseV1(context.Background(), lsys, treeCid, selectorparse.CommonSelector_ExploreAllRecursively, treeBuf)
+	assert.NoError(t, err)
+
+	_, err = car2.TraverseV1(context.Background(), lsys, dataNodeCid, selectorparse.CommonSelector_ExploreAllRecursively, dataBuf)
 	assert.NoError(t, err)
 
 	assert.NoError(t, os.MkdirAll(fmt.Sprintf("./%dRandPairs", count), 0744))
 
-	f, err := os.OpenFile(fmt.Sprintf("./%dRandPairs/data", count), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	f, err := os.OpenFile(fmt.Sprintf("./%dRandPairs/data.car", count), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	assert.NoError(t, err)
-
-	_, err = f.Write(dataBytes)
+	_, err = f.Write(dataBuf.Bytes())
 	assert.NoError(t, err)
 	assert.NoError(t, f.Close())
 
 	f, err = os.OpenFile(fmt.Sprintf("./%dRandPairs/tree.car", count), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	assert.NoError(t, err)
-	_, err = f.Write(buf.Bytes())
+	_, err = f.Write(treeBuf.Bytes())
 	assert.NoError(t, err)
 	assert.NoError(t, f.Close())
 }
@@ -92,26 +141,11 @@ func TestFixtures(t *testing.T) {
 }
 
 func loadFixture(dir string) (*fixtureSet, error) {
-	var data [2][][]byte
-	dataSrc, err := os.ReadFile("./" + dir + "/data")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(dataSrc, &data)
-	if err != nil {
-		return nil, err
-	}
-
-	var testVals []ipld.Node
-	for i := range data[1] {
-		testVals = append(testVals, basicnode.NewBytes(data[1][i]))
-	}
-
+	ctx := context.Background()
 	treeSrc, err := os.ReadFile("./" + dir + "/tree.car")
 	if err != nil {
 		return nil, err
 	}
-
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
 	ns, _ := tree.NewBlockNodeStore(bs, &tree.StoreConfig{CacheSize: 1 << 14})
@@ -128,14 +162,42 @@ func loadFixture(dir string) (*fixtureSet, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &fixtureSet{
-		testKey: data[0],
-		testVal: testVals,
+	fset := &fixtureSet{
 		treeCid: ch.Roots[0],
 		ptree:   ptree,
 		carSize: len(treeSrc),
-	}, nil
+	}
+
+	dataSrc, err := os.ReadFile("./" + dir + "/data.car")
+	if err != nil {
+		return nil, err
+	}
+	ch, err = car.LoadCar(context.Background(), bs, bytes.NewBuffer(dataSrc))
+	if err != nil {
+		return nil, err
+	}
+	if len(ch.Roots) != 1 {
+		panic("invalid root cid number")
+	}
+	dataNode, err := ns.LinkSystem().Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: ch.Roots[0]}, basicnode.Prototype.Map)
+	if err != nil {
+		return nil, err
+	}
+	iter := dataNode.MapIterator()
+	for !iter.Done() {
+		k, v, err := iter.Next()
+		if err != nil {
+			return nil, err
+		}
+		kString, err := k.AsString()
+		if err != nil {
+			return nil, err
+		}
+		fset.testKey = append(fset.testKey, []byte(kString))
+		fset.testVal = append(fset.testVal, v)
+	}
+
+	return fset, nil
 }
 
 func verifyTree(t *testing.T, fset *fixtureSet) {
@@ -149,7 +211,17 @@ func verifyTree(t *testing.T, fset *fixtureSet) {
 	framework, err := tree.NewFramework(ctx, ns, config, nil)
 	assert.NoError(t, err)
 
-	err = framework.AppendBatch(ctx, fset.testKey, fset.testVal)
+	// the map node can not keep order of pairs, so we need sort them
+	muts := tree.NewMutations()
+	for i := range fset.testKey {
+		assert.NoError(t, muts.AddMutation(&tree.Mutation{
+			Key: fset.testKey[i],
+			Val: fset.testVal[i],
+			Op:  tree.Add,
+		}))
+	}
+	muts.Finish()
+	err = framework.AppendFromMutations(ctx, muts)
 	assert.NoError(t, err)
 
 	rebuildTree, rTreeCid, err := framework.BuildTree(ctx)
