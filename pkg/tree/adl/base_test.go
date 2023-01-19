@@ -1,20 +1,25 @@
-package tree
+package adl
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-ipld-prime"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
+	"go-ipld-prolly-trees/pkg/tree"
 	"io"
 	"strings"
 	"testing"
 )
 
-func testLinkSystem(bs blockstore.Blockstore) *ipld.LinkSystem {
+func testLinkSystem() *ipld.LinkSystem {
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+
 	lsys := cidlink.DefaultLinkSystem()
 	lsys.TrustedStorage = true
 	lsys.StorageReadOpener = func(lnkCtx ipld.LinkContext, lnk ipld.Link) (io.Reader, error) {
@@ -48,7 +53,7 @@ func TestCreateAndBuildUse(t *testing.T) {
 	prototype := &ProllyTreeADLPrototype{}
 	builder := prototype.NewBuilder()
 	ptBuilder := builder.(*Builder)
-	ptBuilder = ptBuilder.WithLinkSystem(testLinkSystem(blockstore.NewBlockstore(datastore.NewMapDatastore())))
+	ptBuilder = ptBuilder.WithLinkSystem(testLinkSystem())
 	ma, err := ptBuilder.BeginMap(0)
 	assert.NoError(t, err)
 	ka := ma.AssembleKey()
@@ -82,12 +87,12 @@ func TestMapIterator(t *testing.T) {
 	prototype := &ProllyTreeADLPrototype{}
 	builder := prototype.NewBuilder()
 	ptBuilder := builder.(*Builder)
-	ptBuilder = ptBuilder.WithLinkSystem(testLinkSystem(blockstore.NewBlockstore(datastore.NewMapDatastore())))
+	ptBuilder = ptBuilder.WithLinkSystem(testLinkSystem())
 	ma, err := ptBuilder.BeginMap(0)
 	assert.NoError(t, err)
 
 	count := 10000
-	testKeys, testVals := RandomTestData(count)
+	testKeys, testVals := tree.RandomTestData(count)
 	for i := 0; i < count; i++ {
 		assert.NoError(t, ma.AssembleKey().AssignBytes(testKeys[i]))
 		assert.NoError(t, ma.AssembleValue().AssignNode(testVals[i]))
@@ -113,4 +118,42 @@ func TestMapIterator(t *testing.T) {
 	}
 	assert.Equal(t, idx, count)
 
+}
+
+func TestSaveAndReload(t *testing.T) {
+	t.SkipNow()
+	lsys := testLinkSystem()
+	ctx := context.Background()
+
+	prototype := &ProllyTreeADLPrototype{}
+	builder := prototype.NewBuilder()
+	ptBuilder := builder.(*Builder)
+	ptBuilder = ptBuilder.WithLinkSystem(lsys)
+	ma, err := ptBuilder.BeginMap(0)
+	assert.NoError(t, err)
+	ka := ma.AssembleKey()
+	err = ka.AssignBytes([]byte("testkey1"))
+	assert.NoError(t, err)
+	va := ma.AssembleValue()
+	err = va.AssignString("testval1")
+	assert.NoError(t, err)
+	// close and map Assembler, if assign value, get error
+	err = ma.Finish()
+	n := ptBuilder.Build()
+
+	lnk, err := lsys.Store(ipld.LinkContext{Ctx: ctx}, tree.DefaultLinkProto, n)
+	assert.NoError(t, err)
+
+	n, err = lsys.Load(ipld.LinkContext{Ctx: ctx}, lnk, tree.ProllyTreePrototype)
+	assert.NoError(t, err)
+	pt, err := tree.UnwrapProllyTree(n)
+	assert.NoError(t, err)
+
+	adlNode := &Node{pt}
+	vn, err := adlNode.LookupByNode(basicnode.NewBytes([]byte("testkey1")))
+	assert.NoError(t, err)
+
+	str, err := vn.AsString()
+	assert.NoError(t, err)
+	assert.Equal(t, str, "testval1")
 }

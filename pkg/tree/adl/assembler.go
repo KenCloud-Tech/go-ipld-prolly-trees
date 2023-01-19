@@ -1,4 +1,4 @@
-package tree
+package adl
 
 import (
 	"fmt"
@@ -6,12 +6,13 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/ipld/go-ipld-prime/node/mixins"
+	"go-ipld-prolly-trees/pkg/tree"
 )
 
 var _ ipld.MapAssembler = &TreeAssembler{}
 
 type TreeAssembler struct {
-	muts *Mutations
+	muts *tree.Mutations
 	key  []byte
 }
 
@@ -176,10 +177,10 @@ func (v *valueAssembler) AssignNode(node datamodel.Node) error {
 		return fmt.Errorf("must assign key first")
 	}
 	v.ta.key = nil
-	return v.ta.muts.AddMutation(&Mutation{
+	return v.ta.muts.AddMutation(&tree.Mutation{
 		Key: key,
 		Val: node,
-		Op:  Add,
+		Op:  tree.Add,
 	})
 }
 

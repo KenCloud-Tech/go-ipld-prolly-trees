@@ -204,7 +204,7 @@ func verifyTree(t *testing.T, fset *fixtureSet) {
 	ctx := context.Background()
 	ns := tree.TestMemNodeStore()
 	// get config
-	config, err := fset.ptree.NodeStore().ReadTreeConfig(context.Background(), fset.ptree.ConfigCid)
+	config, err := fset.ptree.NodeStore().ReadTreeConfig(context.Background(), fset.ptree.Config)
 	assert.NoError(t, err)
 
 	// rebuild the tree with same data and config

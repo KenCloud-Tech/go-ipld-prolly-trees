@@ -1,10 +1,11 @@
-package tree
+package adl
 
 import (
 	"context"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/mixins"
+	"go-ipld-prolly-trees/pkg/tree"
 )
 
 var _ ipld.NodePrototype = &ProllyTreeADLPrototype{}
@@ -13,7 +14,7 @@ type ProllyTreeADLPrototype struct {
 }
 
 func (p ProllyTreeADLPrototype) NewBuilder() datamodel.NodeBuilder {
-	cfg := DefaultChunkConfig()
+	cfg := tree.DefaultChunkConfig()
 	return &Builder{
 		cfg: cfg,
 	}
@@ -23,21 +24,21 @@ var _ ipld.NodeBuilder = &Builder{}
 var _ ipld.NodeAssembler = &Builder{}
 
 type Builder struct {
-	cfg  *TreeConfig
-	ns   NodeStore
-	fw   *Framework
-	muts *Mutations
+	cfg  *tree.TreeConfig
+	ns   tree.NodeStore
+	fw   *tree.Framework
+	muts *tree.Mutations
 }
 
 func (b *Builder) WithLinkSystem(lsys *ipld.LinkSystem) *Builder {
 	if lsys == nil {
 		panic("nil linksystem")
 	}
-	b.ns = NewLinkSystemNodeStore(lsys)
+	b.ns = tree.NewLinkSystemNodeStore(lsys)
 	return b
 }
 
-func (b *Builder) WithConfig(cfg *TreeConfig) *Builder {
+func (b *Builder) WithConfig(cfg *tree.TreeConfig) *Builder {
 	if cfg == nil {
 		panic("nil config")
 	}
@@ -47,11 +48,11 @@ func (b *Builder) WithConfig(cfg *TreeConfig) *Builder {
 
 func (b *Builder) BeginMap(_ int64) (datamodel.MapAssembler, error) {
 	var err error
-	b.fw, err = NewFramework(context.Background(), b.ns, b.cfg, nil)
+	b.fw, err = tree.NewFramework(context.Background(), b.ns, b.cfg, nil)
 	if err != nil {
 		return nil, err
 	}
-	b.muts = NewMutations()
+	b.muts = tree.NewMutations()
 	return &TreeAssembler{muts: b.muts}, nil
 }
 
@@ -105,7 +106,7 @@ func (b *Builder) Build() datamodel.Node {
 	if err != nil {
 		panic(err)
 	}
-	return prollyTree
+	return &Node{prollyTree}
 }
 
 func (b *Builder) Reset() {

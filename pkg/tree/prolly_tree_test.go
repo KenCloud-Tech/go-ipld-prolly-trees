@@ -26,10 +26,10 @@ func TestProllyTreeRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 	oldTreeCid := treeCid
 
-	firstKey, err := tree.firstKey()
+	firstKey, err := tree.FirstKey()
 	assert.NoError(t, err)
 	assert.Equal(t, testKeys[0], firstKey)
-	lastKey, err := tree.lastKey()
+	lastKey, err := tree.LastKey()
 	assert.NoError(t, err)
 	assert.Equal(t, testKeys[len(testKeys)-1], lastKey)
 

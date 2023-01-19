@@ -1,8 +1,10 @@
 package tree
 
 import (
+	"encoding/binary"
 	"fmt"
-	"github.com/zeebo/xxh3"
+	"github.com/multiformats/go-multihash"
+	"hash"
 )
 
 type Splitter interface {
@@ -18,7 +20,8 @@ type SuffixSplitter struct {
 	isBoundary       bool
 	totalBytesSize   int
 	totalPairsNumber int
-	pattern          uint64
+	pattern          uint32
+	hashFunction     hash.Hash
 	config           *TreeConfig
 }
 
@@ -26,13 +29,19 @@ func NewSplitterFromConfig(config *TreeConfig) Splitter {
 	var splitter Splitter
 	switch config.StrategyType {
 	case SuffixThreshold:
+		hashFunction, err := multihash.GetHasher(config.Strategy.Suffix.HashFunction)
+		if err != nil {
+			panic(err)
+		}
 		splitter = &SuffixSplitter{
-			config:  config,
-			pattern: uint64(1<<config.Strategy.Suffix.ChunkingFactor - 1),
+			config:       config,
+			hashFunction: hashFunction,
+			pattern:      uint32(1<<config.Strategy.Suffix.ChunkingFactor - 1),
 		}
 	default:
 		panic(fmt.Errorf("unsupported chunk strategy: %v", config.StrategyType))
 	}
+
 	return splitter
 }
 
@@ -57,13 +66,19 @@ func (p *SuffixSplitter) Append(key, val []byte) error {
 		return nil
 	}
 
+	// weak check for minNodeSize(in fact the serialized node is a little bigger than the node)
 	if p.totalBytesSize < p.config.MinNodeSize {
 		return nil
 	}
 
-	h := xxh3.Hash(input)
+	// the maxNodeSize check is out of splitter and in append function
 
-	if h&p.pattern == 0 {
+	p.hashFunction.Write(input)
+	h := p.hashFunction.Sum(nil)
+
+	res := binary.BigEndian.Uint32(h)
+
+	if res&p.pattern == 0 {
 		p.isBoundary = true
 	}
 	return nil

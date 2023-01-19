@@ -63,6 +63,6 @@ func (n *ProllyNode) GetIdxLink(i int) cid.Cid {
 }
 
 type ProllyRoot struct {
-	RootCid   cid.Cid
-	ConfigCid cid.Cid
+	Config cid.Cid
+	Root   cid.Cid
 }

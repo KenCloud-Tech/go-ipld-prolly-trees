@@ -23,14 +23,14 @@ type ProllyTree struct {
 	mutations *Mutations
 }
 
-func (pt *ProllyTree) loadProllyTreeFromRootNode(ns NodeStore) error {
-	prollyRootNode, err := ns.ReadNode(context.Background(), pt.RootCid)
+func (pt *ProllyTree) LoadProllyTreeFromRootNode(ns NodeStore) error {
+	prollyRootNode, err := ns.ReadNode(context.Background(), pt.Root)
 	if err != nil {
 		return err
 	}
 	pt.root = *prollyRootNode
 
-	config, err := ns.ReadTreeConfig(context.Background(), pt.ConfigCid)
+	config, err := ns.ReadTreeConfig(context.Background(), pt.Config)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func LoadProllyTreeFromRootCid(rootCid cid.Cid, ns NodeStore) (*ProllyTree, erro
 	if err != nil {
 		return nil, err
 	}
-	err = tree.loadProllyTreeFromRootNode(ns)
+	err = tree.LoadProllyTreeFromRootNode(ns)
 	return tree, err
 }
 
@@ -77,13 +77,13 @@ func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*It
 	}
 	var err error
 	if start == nil {
-		start, err = pt.firstKey()
+		start, err = pt.FirstKey()
 		if err != nil {
 			return nil, err
 		}
 	}
 	if end == nil {
-		end, err = pt.lastKey()
+		end, err = pt.LastKey()
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +280,7 @@ func (pt *ProllyTree) NodeStore() NodeStore {
 }
 
 // get the first(smallest) key of the tree
-func (pt *ProllyTree) firstKey() ([]byte, error) {
+func (pt *ProllyTree) FirstKey() ([]byte, error) {
 	n := &pt.root
 	var err error
 	for !n.IsLeaf {
@@ -293,6 +293,6 @@ func (pt *ProllyTree) firstKey() ([]byte, error) {
 }
 
 // get the last(largest) key of the tree
-func (pt *ProllyTree) lastKey() ([]byte, error) {
+func (pt *ProllyTree) LastKey() ([]byte, error) {
 	return pt.root.GetIdxKey(pt.root.ItemCount() - 1), nil
 }

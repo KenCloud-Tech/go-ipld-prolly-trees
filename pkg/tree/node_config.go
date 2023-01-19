@@ -3,6 +3,7 @@ package tree
 import (
 	"fmt"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 )
 
 const (
@@ -21,11 +22,11 @@ const (
 // TreeConfig includes config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
 // the splitter
 type TreeConfig struct {
-	StrategyType   byte
 	MinNodeSize    int
 	MaxNodeSize    int
 	MaxPairsInNode int
 	NodeCodec      NodeCodec
+	StrategyType   byte
 	Strategy       strategy
 }
 
@@ -93,8 +94,9 @@ func DefaultChunkConfig() *TreeConfig {
 		MaxPairsInNode: 1000,
 		StrategyType:   SuffixThreshold,
 		NodeCodec:      CodecFromCidPrefix(DefaultLinkProto.Prefix),
-		Strategy: strategy{Suffix: &PrefixThresholdConfig{
+		Strategy: strategy{Suffix: &HashThresholdConfig{
 			ChunkingFactor: 10,
+			HashFunction:   uint64(multicodec.Sha2_256),
 		}},
 	}
 }
@@ -102,22 +104,22 @@ func DefaultChunkConfig() *TreeConfig {
 type strategy struct {
 	//Weilbull    *WeibullThresholdConfig
 	//RollingHash *RollingHashConfig
-	Suffix *PrefixThresholdConfig
+	Suffix *HashThresholdConfig
 }
 
-func (sg *strategy) Equal(_sg *strategy, strategyType byte) bool {
+func (sg *strategy) Equal(another *strategy, strategyType byte) bool {
 	var strCfg strategyConfig
 	var _strCfg strategyConfig
 	switch strategyType {
 	//case WeibullThreshold:
 	//	strCfg = sg.Weilbull
-	//	_strCfg = _sg.Weilbull
+	//	_strCfg = another.Weilbull
 	case SuffixThreshold:
 		strCfg = sg.Suffix
-		_strCfg = _sg.Suffix
+		_strCfg = another.Suffix
 	//case RollingHash:
 	//	strCfg = sg.RollingHash
-	//	_strCfg = _sg.RollingHash
+	//	_strCfg = another.RollingHash
 	default:
 		panic(fmt.Errorf("invalid strategy: %v", strategyType))
 	}
@@ -146,16 +148,17 @@ func (wtc *WeibullThresholdConfig) Equal(sc strategyConfig) bool {
 	return false
 }
 
-type PrefixThresholdConfig struct {
+type HashThresholdConfig struct {
 	ChunkingFactor int
+	HashFunction   uint64
 }
 
-func (ptc *PrefixThresholdConfig) Equal(sc strategyConfig) bool {
-	_ptc, ok := sc.(*PrefixThresholdConfig)
+func (ptc *HashThresholdConfig) Equal(sc strategyConfig) bool {
+	another, ok := sc.(*HashThresholdConfig)
 	if !ok {
 		return false
 	}
-	if ptc.ChunkingFactor == _ptc.ChunkingFactor {
+	if ptc.ChunkingFactor == another.ChunkingFactor {
 		return true
 	}
 	return false
@@ -166,11 +169,11 @@ type RollingHashConfig struct {
 }
 
 func (rhc *RollingHashConfig) Equal(sc strategyConfig) bool {
-	_rhc, ok := sc.(*RollingHashConfig)
+	another, ok := sc.(*RollingHashConfig)
 	if !ok {
 		return false
 	}
-	if rhc.RollingHashWindow == _rhc.RollingHashWindow {
+	if rhc.RollingHashWindow == another.RollingHashWindow {
 		return true
 	}
 	return false

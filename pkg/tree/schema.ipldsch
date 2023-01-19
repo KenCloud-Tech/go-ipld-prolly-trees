@@ -8,29 +8,30 @@ type ProllyNode struct {
 } representation tuple
 
 type ProllyRoot struct{
-    # root ProllyNode of tree
-    RootCid &ProllyNode
     # config about the tree
-    ConfigCid &TreeConfig
-}
+    Config &TreeConfig
+    # root ProllyNode of tree
+    Root &ProllyNode
+} representation tuple
 
-type SuffixThresholdConfig struct {
+type HashThresholdConfig struct {
     chunkingFactor Int
+    hashFunction Int
 } representation tuple
 
 # Tree Config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
 # the splitter
 type TreeConfig struct{
-    strategyType    Int
     minNodeSize     Int
     maxNodeSize     Int
     maxPairsInNode  Int
     nodeCodec       Prefix
+    strategyType    Int
     strategy        strategy
 } representation tuple
 
 type strategy union {
-    | SuffixThresholdConfig     "suffix"
+    | HashThresholdConfig     "hashThreshold"
 } representation keyed
 
 type Prefix struct{
