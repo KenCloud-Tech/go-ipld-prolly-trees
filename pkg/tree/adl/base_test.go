@@ -105,9 +105,9 @@ func TestMapIterator(t *testing.T) {
 	for !iter.Done() {
 		k, v, err := iter.Next()
 		assert.NoError(t, err)
-		kBytes, err := k.AsBytes()
+		kString, err := k.AsString()
 		assert.NoError(t, err)
-		assert.Equal(t, kBytes, testKeys[idx])
+		assert.Equal(t, kString, string(testKeys[idx]))
 		vBytes, err := v.AsBytes()
 		assert.NoError(t, err)
 		tvBytes, err := testVals[idx].AsBytes()
@@ -121,7 +121,7 @@ func TestMapIterator(t *testing.T) {
 }
 
 func TestSaveAndReload(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	lsys := testLinkSystem()
 	ctx := context.Background()
 
@@ -140,16 +140,20 @@ func TestSaveAndReload(t *testing.T) {
 	// close and map Assembler, if assign value, get error
 	err = ma.Finish()
 	n := ptBuilder.Build()
-
-	lnk, err := lsys.Store(ipld.LinkContext{Ctx: ctx}, tree.DefaultLinkProto, n)
+	pn := n.(*Node)
+	node, err := pn.ToNode()
 	assert.NoError(t, err)
 
-	n, err = lsys.Load(ipld.LinkContext{Ctx: ctx}, lnk, tree.ProllyTreePrototype)
+	lnk, err := lsys.Store(ipld.LinkContext{Ctx: ctx}, tree.DefaultLinkProto, node)
+	assert.NoError(t, err)
+
+	n, err = lsys.Load(ipld.LinkContext{Ctx: ctx}, lnk, tree.ProllyTreePrototype.Representation())
 	assert.NoError(t, err)
 	pt, err := tree.UnwrapProllyTree(n)
 	assert.NoError(t, err)
 
 	adlNode := &Node{pt}
+	adlNode.WithLinkSystem(lsys)
 	vn, err := adlNode.LookupByNode(basicnode.NewBytes([]byte("testkey1")))
 	assert.NoError(t, err)
 

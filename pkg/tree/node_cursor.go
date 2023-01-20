@@ -113,6 +113,10 @@ func (cur *Cursor) GetValue() ipld.Node {
 	return cur.node.GetIdxValue(cur.idx)
 }
 
+func (cur *Cursor) GetTreeCount() uint32 {
+	return cur.node.GetIdxTreeCount(cur.idx)
+}
+
 func (cur *Cursor) Compare(_cur *Cursor) int {
 	if cur == nil && _cur == nil {
 		return 0

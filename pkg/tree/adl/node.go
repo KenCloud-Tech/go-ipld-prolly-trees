@@ -75,7 +75,7 @@ func (n *Node) ListIterator() datamodel.ListIterator {
 }
 
 func (n *Node) Length() int64 {
-	panic("implement me")
+	return int64(n.TreeCount())
 }
 
 func (n *Node) IsAbsent() bool {

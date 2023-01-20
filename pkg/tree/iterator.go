@@ -35,7 +35,7 @@ func (si *Iterator) receivePair(key []byte, value ipld.Node) {
 
 func (si *Iterator) Next() (ipld.Node, ipld.Node, error) {
 	k, v, err := si.NextPair()
-	return basicnode.NewBytes(k), v, err
+	return basicnode.NewString(string(k)), v, err
 }
 
 func (si *Iterator) NextPair() ([]byte, ipld.Node, error) {

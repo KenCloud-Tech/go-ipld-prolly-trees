@@ -32,6 +32,7 @@ func TestProllyTreeRoundTrip(t *testing.T) {
 	lastKey, err := tree.LastKey()
 	assert.NoError(t, err)
 	assert.Equal(t, testKeys[len(testKeys)-1], lastKey)
+	assert.Equal(t, tree.TreeCount(), uint32(100000))
 
 	for i := 0; i < 100000; i++ {
 		idx := rand.Intn(100000)
@@ -51,6 +52,8 @@ func TestProllyTreeRoundTrip(t *testing.T) {
 
 	_, err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
+
+	assert.Equal(t, tree.TreeCount(), uint32(100000))
 
 	reloadTree, err := LoadProllyTreeFromRootCid(oldTreeCid, bns)
 	assert.NoError(t, err)
@@ -80,6 +83,7 @@ func TestProllyTreeRoundTrip(t *testing.T) {
 	assert.Equal(t, vnode, trueVnode)
 	_, err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
+	assert.Equal(t, tree.TreeCount(), uint32(100001))
 
 	res, err := tree.Get([]byte("testkey123321"))
 	assert.NoError(t, err)

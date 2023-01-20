@@ -10,9 +10,10 @@ import (
 type CompareFunc func(left, right []byte) int
 
 type ProllyNode struct {
-	IsLeaf bool
-	Keys   [][]byte
-	Values []ipld.Node
+	IsLeaf       bool
+	Keys         [][]byte
+	Values       []ipld.Node
+	SubtreeCount []uint32
 }
 
 func (n *ProllyNode) IsLeafNode() bool {
@@ -60,6 +61,18 @@ func (n *ProllyNode) GetIdxLink(i int) cid.Cid {
 		panic(fmt.Errorf("invalid value, expected cidlink, got: %v", n.Values[i]))
 	}
 	return link.(cidlink.Link).Cid
+}
+
+func (n *ProllyNode) GetIdxTreeCount(i int) uint32 {
+	return n.SubtreeCount[i]
+}
+
+func (n *ProllyNode) totalPairCount() uint32 {
+	var sum uint32
+	for _, count := range n.SubtreeCount {
+		sum += count
+	}
+	return sum
 }
 
 type ProllyRoot struct {

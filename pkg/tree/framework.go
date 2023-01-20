@@ -21,9 +21,10 @@ func (nb *nodeBuffer) count() int {
 	return len(nb.nd.Keys)
 }
 
-func (nb *nodeBuffer) tryAddPair(key []byte, val ipld.Node) bool {
+func (nb *nodeBuffer) tryAddPair(key []byte, val ipld.Node, subtreeSize uint32) bool {
 	nb.nd.Keys = append(nb.nd.Keys, key)
 	nb.nd.Values = append(nb.nd.Values, val)
+	nb.nd.SubtreeCount = append(nb.nd.SubtreeCount, subtreeSize)
 
 	sz := nb.encodedSize()
 	if sz > nb.maxNodeSize {
@@ -31,6 +32,7 @@ func (nb *nodeBuffer) tryAddPair(key []byte, val ipld.Node) bool {
 		count := nb.count()
 		nb.nd.Keys = nb.nd.Keys[:count-1]
 		nb.nd.Values = nb.nd.Values[:count-1]
+		nb.nd.SubtreeCount = nb.nd.SubtreeCount[:count-1]
 		return false
 	}
 
@@ -53,6 +55,7 @@ func (nb *nodeBuffer) encodedSize() int {
 func (nb *nodeBuffer) clean() {
 	nb.nd.Keys = nil
 	nb.nd.Values = nil
+	nb.nd.SubtreeCount = nil
 }
 
 func (nb *nodeBuffer) build() *ProllyNode {
@@ -126,7 +129,7 @@ func newLevelBuilderWithCursor(ctx context.Context, isLeaf bool, ns NodeStore, c
 	return lb, nil
 }
 
-func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node) (bool, error) {
+func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node, subtreeCount uint32) (bool, error) {
 	if lb.done {
 		return false, fmt.Errorf("append pair in done builder")
 	}
@@ -136,13 +139,13 @@ func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node)
 		return false, err
 	}
 
-	ok := lb.nodeBuffer.tryAddPair(key, value)
+	ok := lb.nodeBuffer.tryAddPair(key, value, subtreeCount)
 	if !ok {
 		err = lb.splitBoundary(ctx)
 		if err != nil {
 			return false, err
 		}
-		ok = lb.nodeBuffer.tryAddPair(key, value)
+		ok = lb.nodeBuffer.tryAddPair(key, value, subtreeCount)
 		if !ok {
 			panic("too large pair bigger than the node size limit")
 		}
@@ -195,7 +198,7 @@ func (lb *LevelBuilder) splitBoundary(ctx context.Context) error {
 	}
 
 	vnode := basicnode.NewLink(cidlink.Link{Cid: addr})
-	_, err = lb.parentBuilder.append(ctx, lastKey, vnode)
+	_, err = lb.parentBuilder.append(ctx, lastKey, vnode, node.totalPairCount())
 	lb.splitter.Reset()
 
 	return nil
@@ -235,6 +238,7 @@ func (lb *LevelBuilder) appendEntriesBeforeCursor(ctx context.Context) error {
 		_, err := lb.append(ctx,
 			lb.cursor.node.GetIdxKey(index),
 			lb.cursor.node.GetIdxValue(index),
+			lb.cursor.node.GetIdxTreeCount(index),
 		)
 		if err != nil {
 			return err
@@ -251,6 +255,7 @@ func (lb *LevelBuilder) appendEntriesAfterCursor(ctx context.Context) error {
 		boundaryGenerated, err := lb.append(ctx,
 			cur.GetKey(),
 			cur.GetValue(),
+			cur.GetTreeCount(),
 		)
 		if err != nil {
 			return err
@@ -386,7 +391,7 @@ func (fw *Framework) Append(ctx context.Context, key []byte, val ipld.Node) erro
 	if fw.done {
 		return fmt.Errorf("append data in done framework")
 	}
-	_, err := fw.builders[0].append(ctx, key, val)
+	_, err := fw.builders[0].append(ctx, key, val, 1)
 	return err
 }
 
@@ -516,7 +521,7 @@ func (lb *LevelBuilder) appendToCursor(ctx context.Context, cur *Cursor) error {
 		return fmt.Errorf("cursor is behind the framework")
 	}
 
-	boundary, err := lb.append(ctx, lcur.GetKey(), lcur.GetValue())
+	boundary, err := lb.append(ctx, lcur.GetKey(), lcur.GetValue(), lcur.GetTreeCount())
 	if err != nil {
 		return err
 	}
@@ -533,7 +538,7 @@ func (lb *LevelBuilder) appendToCursor(ctx context.Context, cur *Cursor) error {
 			return nil
 		}
 
-		boundary, err = lb.append(ctx, lcur.GetKey(), lcur.GetValue())
+		boundary, err = lb.append(ctx, lcur.GetKey(), lcur.GetValue(), lcur.GetTreeCount())
 		if err != nil {
 			return err
 		}

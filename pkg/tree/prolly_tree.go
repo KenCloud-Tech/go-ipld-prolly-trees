@@ -279,6 +279,10 @@ func (pt *ProllyTree) NodeStore() NodeStore {
 	return pt.ns
 }
 
+func (pt *ProllyTree) TreeCount() uint32 {
+	return pt.root.totalPairCount()
+}
+
 // get the first(smallest) key of the tree
 func (pt *ProllyTree) FirstKey() ([]byte, error) {
 	n := &pt.root

@@ -5,6 +5,7 @@ type ProllyNode struct {
 	keys [Bytes]
 	# input data from users for leaf nodes, link(cid) for branch nodes
     values [Any]
+    subtreeCount [Int]
 } representation tuple
 
 type ProllyRoot struct{
