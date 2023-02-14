@@ -26,7 +26,10 @@ type TreeConfig struct{
     minNodeSize     Int
     maxNodeSize     Int
     maxPairsInNode  Int
-    nodeCodec       Prefix
+    cidVersion Int
+    codec Int
+    hashFunction Int
+    hashLength nullable Int
     strategyType    Int
     strategy        strategy
 } representation tuple
@@ -34,10 +37,3 @@ type TreeConfig struct{
 type strategy union {
     | HashThresholdConfig     "hashThreshold"
 } representation keyed
-
-type Prefix struct{
-    cidVersion Int
-    codec Int
-    hashFunction Int
-    hashLength nullable Int
-} representation tuple

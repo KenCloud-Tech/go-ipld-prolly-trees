@@ -362,7 +362,7 @@ func NewFramework(ctx context.Context, ns NodeStore, cfg *TreeConfig, cur *Curso
 	if cfg == nil {
 		return nil, fmt.Errorf("nil config")
 	}
-	cidprefix := cfg.NodeCodec.ToCidPrefix()
+	cidprefix := cfg.CidPrefix()
 	nodeCoder := NewNodeCoder()
 	// ignore error, we can register the Codec later
 	_ = nodeCoder.InitEncoder(cidprefix.Codec)
