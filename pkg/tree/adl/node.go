@@ -8,7 +8,7 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/ipld/go-ipld-prime/node/mixins"
-	"go-ipld-prolly-trees/pkg/tree"
+	"github.com/kenlabs/go-ipld-prolly-trees/pkg/tree"
 )
 
 var _ datamodel.Node = &Node{}

@@ -11,7 +11,7 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
-	"go-ipld-prolly-trees/pkg/tree"
+	"github.com/kenlabs/go-ipld-prolly-trees/pkg/tree"
 	"io"
 	"strings"
 	"testing"

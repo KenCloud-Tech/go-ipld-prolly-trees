@@ -14,7 +14,7 @@ import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"github.com/zeebo/assert"
-	"go-ipld-prolly-trees/pkg/tree"
+	"github.com/kenlabs/go-ipld-prolly-trees/pkg/tree"
 	"os"
 	"testing"
 )

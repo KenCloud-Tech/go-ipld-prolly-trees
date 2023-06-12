@@ -12,9 +12,9 @@ require (
 	github.com/ipld/go-car/v2 v2.5.1
 	github.com/ipld/go-ipld-prime v0.19.0
 	github.com/multiformats/go-multicodec v0.6.0
+	github.com/multiformats/go-multihash v0.2.1
 	github.com/stretchr/testify v1.7.0
 	github.com/zeebo/assert v1.3.1
-	github.com/zeebo/xxh3 v1.0.2
 )
 
 require (
@@ -44,7 +44,6 @@ require (
 	github.com/multiformats/go-base32 v0.0.3 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multibase v0.0.3 // indirect
-	github.com/multiformats/go-multihash v0.2.1 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

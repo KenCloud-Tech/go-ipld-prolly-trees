@@ -10,7 +10,7 @@ import (
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/linking"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
-	"go-ipld-prolly-trees/pkg/tree/linksystem"
+	"github.com/kenlabs/go-ipld-prolly-trees/pkg/tree/linksystem"
 )
 
 type StoreConfig struct {
