@@ -1,4 +1,4 @@
-module go-ipld-prolly-trees
+module github.com/kenlabs/go-ipld-prolly-trees
 
 go 1.18
 
