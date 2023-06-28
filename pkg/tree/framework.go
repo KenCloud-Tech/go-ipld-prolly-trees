@@ -169,9 +169,6 @@ func (lb *LevelBuilder) append(ctx context.Context, key []byte, value ipld.Node,
 }
 
 func buildAndSaveNode(ctx context.Context, nb *nodeBuffer, prefix *cid.Prefix, ns NodeStore) (*ProllyNode, cid.Cid, error) {
-	if !(nb.count() > 0) {
-		return nil, cid.Undef, fmt.Errorf("invalid nodeBuffer to build")
-	}
 	node := nb.build()
 	addr, err := ns.WriteNode(ctx, node, prefix)
 	if err != nil {
