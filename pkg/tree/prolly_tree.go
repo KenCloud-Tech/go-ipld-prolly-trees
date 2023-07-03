@@ -93,30 +93,36 @@ func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*It
 	if err != nil {
 		return nil, err
 	}
-	iter := NewIterator()
-	for {
-		if !cur.IsValid() {
-			break
+	iter := NewIterator(-1)
+	go func() {
+		defer iter.finish()
+		for {
+			select {
+			case <-ctx.Done():
+				// todo: return error info
+				return
+			default:
+			}
+			if !cur.IsValid() {
+				break
+			}
+			key := cur.GetKey()
+
+			if DefaultCompareFunc(key, start) < 0 || DefaultCompareFunc(key, end) > 0 {
+				break
+			}
+
+			val := cur.GetValue()
+
+			iter.receivePair(key, val)
+
+			err = cur.Advance()
+			if err != nil {
+				// todo: return error info
+				return
+			}
 		}
-		key := cur.GetKey()
-
-		if DefaultCompareFunc(key, start) < 0 || DefaultCompareFunc(key, end) > 0 {
-			break
-		}
-
-		val := cur.GetValue()
-
-		iter.receivePair(key, val)
-
-		err = cur.Advance()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if iter.IsEmpty() {
-		return nil, KeyNotFound
-	}
+	}()
 
 	return iter, nil
 }

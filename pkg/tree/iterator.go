@@ -1,36 +1,53 @@
 package tree
 
 import (
+	"fmt"
 	"github.com/ipld/go-ipld-prime"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"io"
 	"sync"
 )
 
+const DefaultChannelSize = 20
+
 type pair struct {
 	key   []byte
 	value ipld.Node
 }
 
-func NewIterator() *Iterator {
+func NewIterator(size int) *Iterator {
+	if size == -1 {
+		size = DefaultChannelSize
+	} else if size < 0 {
+		panic(fmt.Sprintf("invalid result channel size: %d", size))
+	}
 	return &Iterator{
-		result: make([]pair, 0),
+		result: make(chan pair, size),
 	}
 }
 
 type Iterator struct {
-	idx    int
 	mtx    sync.Mutex
-	result []pair
+	result chan pair
+	done   bool
 }
 
 func (si *Iterator) receivePair(key []byte, value ipld.Node) {
-	si.mtx.Lock()
-	defer si.mtx.Unlock()
-	si.result = append(si.result, pair{
+	if si.done {
+		panic("channel has closed")
+	}
+	si.result <- pair{
 		key:   key,
 		value: value,
-	})
+	}
+}
+
+func (si *Iterator) finish() {
+	if si.done == true {
+		panic("repeated closing")
+	}
+	si.done = true
+	close(si.result)
 }
 
 func (si *Iterator) Next() (ipld.Node, ipld.Node, error) {
@@ -39,19 +56,15 @@ func (si *Iterator) Next() (ipld.Node, ipld.Node, error) {
 }
 
 func (si *Iterator) NextPair() ([]byte, ipld.Node, error) {
-	// avoid concurrent Next() to read
-	si.mtx.Lock()
-	defer si.mtx.Unlock()
 	if si.Done() {
 		return nil, nil, io.EOF
 	}
-	res := si.result[si.idx]
-	si.idx++
+	res := <-si.result
 	return res.key, res.value, nil
 }
 
 func (si *Iterator) Done() bool {
-	return si.idx == len(si.result)
+	return si.done && len(si.result) == 0
 }
 
 func (si *Iterator) IsEmpty() bool {
