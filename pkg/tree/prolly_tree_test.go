@@ -165,6 +165,39 @@ func TestRepeatedMutate(t *testing.T) {
 	}
 }
 
+func TestMutateEmpty(t *testing.T) {
+	ctx := context.Background()
+	testKeys, testVals := RandomTestData(10000)
+
+  ns := TestMemNodeStore()
+  cfg := DefaultChunkConfig()
+  cfg.Strategy.Suffix.ChunkingFactor = 10
+  framework, err := NewFramework(ctx, ns, cfg, nil)
+  assert.NoError(t, err)
+  tree, _, _ := framework.BuildTree(ctx)
+
+	err = tree.Mutate()
+	assert.NoError(t, err)
+
+	for i := 5000; i < 10000; i++ {
+		err = tree.Put(ctx, testKeys[i], testVals[i])
+		assert.NoError(t, err)
+	}
+
+	_, err = tree.Rebuild(ctx)
+	assert.NoError(t, err)
+
+	for i := 0; i < 10000; i++ {
+		v, err := tree.Get(testKeys[i])
+		assert.NoError(t, err)
+		vBytes, err := v.AsBytes()
+		assert.NoError(t, err)
+		tvBytes, err := testVals[i].AsBytes()
+		assert.NoError(t, err)
+		assert.Equal(t, vBytes, tvBytes)
+	}
+}
+
 func TestMutateSearch(t *testing.T) {
 	ctx := context.Background()
 	testKeys, testVals := RandomTestData(10000)

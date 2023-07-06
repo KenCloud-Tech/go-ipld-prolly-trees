@@ -159,6 +159,8 @@ func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error 
 		if err != nil {
 			return err
 		}
+	} else {
+		return fmt.Errorf("cannot put, invalid cursor at key")
 	}
 
 	return nil
