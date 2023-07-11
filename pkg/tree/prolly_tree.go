@@ -287,6 +287,11 @@ func (pt *ProllyTree) NodeStore() NodeStore {
 	return pt.ns
 }
 
+
+func (pt *ProllyTree) TreeConfig() TreeConfig {
+       return pt.treeConfig
+}
+
 func (pt *ProllyTree) TreeCount() uint32 {
 	return pt.root.totalPairCount()
 }
