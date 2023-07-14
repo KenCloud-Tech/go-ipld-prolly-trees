@@ -133,6 +133,10 @@ func (pt *ProllyTree) Mutate() error {
 	return nil
 }
 
+func (pt *ProllyTree) IsMutating() bool{
+	return pt.mutating
+}
+
 func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error {
 	if !pt.mutating {
 		return fmt.Errorf("please call ProllyTree.Mutate firstly")
