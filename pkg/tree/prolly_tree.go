@@ -133,7 +133,7 @@ func (pt *ProllyTree) Mutate() error {
 	return nil
 }
 
-func (pt *ProllyTree) IsMutating() bool{
+func (pt *ProllyTree) IsMutating() bool {
 	return pt.mutating
 }
 
@@ -291,9 +291,8 @@ func (pt *ProllyTree) NodeStore() NodeStore {
 	return pt.ns
 }
 
-
 func (pt *ProllyTree) TreeConfig() TreeConfig {
-       return pt.treeConfig
+	return pt.treeConfig
 }
 
 func (pt *ProllyTree) TreeCount() uint32 {

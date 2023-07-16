@@ -169,12 +169,12 @@ func TestMutateEmpty(t *testing.T) {
 	ctx := context.Background()
 	testKeys, testVals := RandomTestData(10000)
 
-  ns := TestMemNodeStore()
-  cfg := DefaultChunkConfig()
-  cfg.Strategy.Suffix.ChunkingFactor = 10
-  framework, err := NewFramework(ctx, ns, cfg, nil)
-  assert.NoError(t, err)
-  tree, _, _ := framework.BuildTree(ctx)
+	ns := TestMemNodeStore()
+	cfg := DefaultChunkConfig()
+	cfg.Strategy.Suffix.ChunkingFactor = 10
+	framework, err := NewFramework(ctx, ns, cfg, nil)
+	assert.NoError(t, err)
+	tree, _, _ := framework.BuildTree(ctx)
 
 	err = tree.Mutate()
 	assert.NoError(t, err)

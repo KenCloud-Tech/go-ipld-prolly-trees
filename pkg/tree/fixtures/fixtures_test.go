@@ -13,8 +13,8 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
-	"github.com/zeebo/assert"
 	"github.com/kenlabs/go-ipld-prolly-trees/pkg/tree"
+	"github.com/zeebo/assert"
 	"os"
 	"testing"
 )
