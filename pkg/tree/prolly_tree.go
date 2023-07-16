@@ -71,6 +71,30 @@ func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
 	return cur.GetValue(), nil
 }
 
+func (pt *ProllyTree) GetProof(key []byte) ([]cid.Cid, error) {
+	if pt.mutating {
+		return nil, fmt.Errorf("Cannot get proof while tree is being mutated. Apply changes with Rebuild first.")
+	}
+
+	cur, err := CursorAtItem(&pt.root, key, DefaultCompareFunc, pt.ns)
+	if err != nil {
+		return nil, err
+	}
+	if !cur.IsValid() || DefaultCompareFunc(cur.GetKey(), key) != 0 {
+		return nil, KeyNotFound
+	}
+
+	var proof []cid.Cid
+
+	for cur.parent != nil {
+		link := cur.GetLink()
+		proof = append(proof, link)
+		cur = cur.parent
+	}
+
+	return proof, nil
+}
+
 func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*Iterator, error) {
 	if start == nil && end == nil {
 		return nil, fmt.Errorf("empty start and end key")
