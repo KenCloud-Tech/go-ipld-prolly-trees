@@ -86,7 +86,11 @@ func (pt *ProllyTree) GetProof(key []byte) ([]cid.Cid, error) {
 
 	var proof []cid.Cid
 
-	for cur.parent != nil {
+	if cur.node.IsLeaf {
+		cur = cur.parent
+	}
+
+	for cur != nil {
 		link := cur.GetLink()
 		proof = append(proof, link)
 		cur = cur.parent
