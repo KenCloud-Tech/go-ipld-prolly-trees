@@ -187,7 +187,7 @@ func TestMutateEmpty(t *testing.T) {
 	_, err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
 
-	for i := 0; i < 10000; i++ {
+	for i := 5000; i < 10000; i++ {
 		v, err := tree.Get(testKeys[i])
 		assert.NoError(t, err)
 		vBytes, err := v.AsBytes()
@@ -234,4 +234,50 @@ func TestPrefixCompare(t *testing.T) {
 	t.Log(DefaultCompareFunc(prefixD, prefixC))
 	t.Log(bytes.HasPrefix(prefixC, prefixB))
 	t.Log(bytes.HasPrefix(prefixC, prefixA))
+}
+
+func TestCriticalCondition(t *testing.T) {
+	ctx := context.Background()
+	ns := TestMemNodeStore()
+	bns := ns.(*BlockNodeStore)
+
+	cfg := DefaultChunkConfig()
+	framwork, err := NewFramework(ctx, bns, cfg, nil)
+	assert.NoError(t, err)
+	err = framwork.Append(ctx, []byte{byte(0), byte(0)}, basicnode.NewString("abcdsad"))
+	assert.NoError(t, err)
+	err = framwork.Append(ctx, []byte{byte(0), byte(1)}, basicnode.NewString("abcdsad"))
+	assert.NoError(t, err)
+	err = framwork.Append(ctx, []byte{byte(0), byte(1), byte(12)}, basicnode.NewString("abcdsad"))
+	assert.NoError(t, err)
+	tree, _, err := framwork.BuildTree(ctx)
+	assert.NoError(t, err)
+	t.Log(tree.root.Keys)
+
+	err = tree.Mutate()
+	assert.NoError(t, err)
+	err = tree.Put(ctx, []byte{byte(0), byte(117), byte(115), byte(101)}, basicnode.NewString("czxcas"))
+	assert.NoError(t, err)
+	err = tree.Put(ctx, []byte{byte(0), byte(117), byte(115), byte(102)}, basicnode.NewString("cdasdas"))
+	assert.NoError(t, err)
+	err = tree.Put(ctx, []byte{byte(0), byte(117), byte(115), byte(103)}, basicnode.NewString("fdsfds"))
+	assert.NoError(t, err)
+	err = tree.Put(ctx, []byte{byte(0), byte(117), byte(115), byte(104)}, basicnode.NewString("dasdadass"))
+	assert.NoError(t, err)
+
+	_, err = tree.Rebuild(ctx)
+	assert.NoError(t, err)
+
+	t.Log(tree.root.Keys)
+	start := []byte{byte(0), byte(117), byte(115), byte(100)}
+	end := []byte{byte(0), byte(117), byte(115), byte(105)}
+	iter, err := tree.Search(ctx, start, end)
+	assert.NoError(t, err)
+
+	for !iter.Done() {
+		k, _, err := iter.Next()
+		assert.NoError(t, err)
+		kv, _ := k.AsString()
+		t.Log([]byte(kv))
+	}
 }

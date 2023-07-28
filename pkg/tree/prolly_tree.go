@@ -179,7 +179,15 @@ func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error 
 		Val: val,
 	}
 
-	if cur.IsValid() {
+	if !cur.IsValid() && !cur.node.IsEmpty() {
+		panic("invalid cursor")
+	}
+
+	// empty tree
+	if cur.node.IsEmpty() {
+		//Add new pair
+		mut.Op = Add
+	} else {
 		// Modify
 		if DefaultCompareFunc(cur.GetKey(), key) == 0 {
 			mut.Op = Modify
@@ -187,12 +195,11 @@ func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error 
 			//Add new pair
 			mut.Op = Add
 		}
-		err = pt.mutations.AddMutation(mut)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("cannot put, invalid cursor at key")
+	}
+
+	err = pt.mutations.AddMutation(mut)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -243,7 +250,7 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	for {
 
 		if mut.Op == Add {
-			if cur.IsValid() && DefaultCompareFunc(cur.GetKey(), mut.Key) == 0 {
+			if !cur.node.IsEmpty() && cur.IsValid() && DefaultCompareFunc(cur.GetKey(), mut.Key) == 0 {
 				return cid.Undef, fmt.Errorf("can not add exist key in the tree")
 			}
 			err := framework.Append(ctx, mut.Key, mut.Val)
@@ -284,14 +291,14 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 		if err != nil {
 			return cid.Undef, err
 		}
-		// the key is bigger than all keys in the tree, make it after the rear
-		if DefaultCompareFunc(cur.GetKey(), mut.Key) < 0 {
+		// the key is bigger than all keys in the tree, advance it
+		if cur.IsBiggerThanTheNode(mut.Key) {
 			err = cur.Advance()
 			if err != nil {
 				return cid.Undef, err
 			}
 		}
-		// todo move cursor to next mutation location and append items between them
+
 		err = framework.appendToCursor(ctx, cur)
 		if err != nil {
 			return cid.Undef, err

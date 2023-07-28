@@ -20,6 +20,10 @@ func (n *ProllyNode) IsLeafNode() bool {
 	return n.IsLeaf
 }
 
+func (n *ProllyNode) IsEmpty() bool {
+	return n.ItemCount() == 0
+}
+
 // KeyIndex finds the index that the closest but not smaller than the item
 func (n *ProllyNode) KeyIndex(item []byte, cp CompareFunc) int {
 	length := len(n.Keys)

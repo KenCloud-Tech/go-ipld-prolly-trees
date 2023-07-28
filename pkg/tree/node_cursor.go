@@ -31,6 +31,14 @@ func (cur *Cursor) IsAtEnd() bool {
 	return cur.idx == cur.node.ItemCount()-1
 }
 
+func (cur *Cursor) IsBiggerThanTheNode(key []byte) bool {
+	// only call the function while cur at tail
+	if !cur.IsAtEnd() {
+		return false
+	}
+	return DefaultCompareFunc(key, cur.GetKey()) > 0
+}
+
 func (cur *Cursor) GetLink() cid.Cid {
 	if cur.node.IsLeafNode() {
 		panic("can not get link from leaf node")
