@@ -143,6 +143,7 @@ func (ns *BlockNodeStore) ReadTree(ctx context.Context, c cid.Cid) (*ProllyTree,
 	if err != nil {
 		return nil, err
 	}
+	root.treeCid = &c
 
 	return root, nil
 }
