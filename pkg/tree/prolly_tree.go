@@ -116,11 +116,20 @@ func (pt *ProllyTree) GetProof(key []byte) (Proof, error) {
 		cur = cur.parent
 	}
 
+	// Add top level tree node
 	index := cur.GetIndex()
 	proof = append(proof, ProofSegment{
-		// Get root tree node cid as final step
-		Node:  *pt.treeCid,
+		// Get root tree node cid
+		Node:  pt.Root,
 		Index: index,
+	})
+
+	// Add prolly root
+	proof = append(proof, ProofSegment{
+		// Get prolly tree cid as final step
+		Node: *pt.treeCid,
+		// Index is 2 cause of cbor encoding
+		Index: 2,
 	})
 
 	return proof, nil
