@@ -34,6 +34,10 @@ func TestProllyTreeRoundTrip(t *testing.T) {
 	assert.Equal(t, testKeys[len(testKeys)-1], lastKey)
 	assert.Equal(t, tree.TreeCount(), uint32(100000))
 
+	firstProof, err := tree.GetProof(firstKey)
+	assert.NoError(t, err)
+	assert.Equal(t, firstProof[len(firstProof)-1].Node, treeCid)
+
 	for i := 0; i < 100000; i++ {
 		idx := rand.Intn(100000)
 		val, err := tree.Get(testKeys[idx])
@@ -75,17 +79,23 @@ func TestProllyTreeRoundTrip(t *testing.T) {
 	trueVnode, _ := testVals[19999].AsBytes()
 	assert.Equal(t, vnode, trueVnode)
 
+	// Make sure proofs work after relload
+	reloadProof, err := reloadOldTree.GetProof(testKeys[19999])
+	assert.NoError(t, err)
+	assert.Equal(t, reloadProof[len(reloadProof)-1].Node, oldTreeCid)
+
 	// insert
+	newTestKey := []byte("testkey123321")
 	insertVnode := basicnode.NewString("dasdsadasdsad")
 	err = tree.Mutate()
 	assert.NoError(t, err)
-	err = tree.Put(ctx, []byte("testkey123321"), insertVnode)
+	err = tree.Put(ctx, newTestKey, insertVnode)
 	assert.Equal(t, vnode, trueVnode)
 	_, err = tree.Rebuild(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, tree.TreeCount(), uint32(100001))
 
-	res, err := tree.Get([]byte("testkey123321"))
+	res, err := tree.Get(newTestKey)
 	assert.NoError(t, err)
 	expectStr, _ := insertVnode.AsString()
 	resStr, _ := res.AsString()

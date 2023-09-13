@@ -118,10 +118,10 @@ func (pt *ProllyTree) GetProof(key []byte) (Proof, error) {
 
 	index := cur.GetIndex()
 	proof = append(proof, ProofSegment{
+		// Get root tree node cid as final step
 		Node:  *pt.treeCid,
 		Index: index,
 	})
-	// Get root tree node cid
 
 	return proof, nil
 }

@@ -274,6 +274,7 @@ func (ns *LinkSystemNodeStore) ReadTree(ctx context.Context, c cid.Cid) (*Prolly
 	if err != nil {
 		return nil, err
 	}
+	root.treeCid = &c
 
 	return root, nil
 }
