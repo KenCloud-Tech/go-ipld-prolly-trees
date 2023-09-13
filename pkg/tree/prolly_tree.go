@@ -23,6 +23,16 @@ type ProllyTree struct {
 	mutations *Mutations
 }
 
+// Segments in proving a key-value pair is in a tree
+type ProofSegment struct {
+	// Which node in the tree to perform the lookup on
+	node cid.Cid
+	// Which index the key is in
+	index int
+}
+
+type Proof []ProofSegment
+
 func (pt *ProllyTree) LoadProllyTreeFromRootNode(ns NodeStore) error {
 	prollyRootNode, err := ns.ReadNode(context.Background(), pt.Root)
 	if err != nil {
@@ -71,7 +81,7 @@ func (pt *ProllyTree) Get(key []byte) (ipld.Node, error) {
 	return cur.GetValue(), nil
 }
 
-func (pt *ProllyTree) GetProof(key []byte) ([]cid.Cid, error) {
+func (pt *ProllyTree) GetProof(key []byte) (Proof, error) {
 	if pt.mutating {
 		return nil, fmt.Errorf("Cannot get proof while tree is being mutated. Apply changes with Rebuild first.")
 	}
@@ -84,7 +94,7 @@ func (pt *ProllyTree) GetProof(key []byte) ([]cid.Cid, error) {
 		return nil, KeyNotFound
 	}
 
-	var proof []cid.Cid
+	proof := Proof{}
 
 	if cur.node.IsLeaf {
 		cur = cur.parent
@@ -92,7 +102,11 @@ func (pt *ProllyTree) GetProof(key []byte) ([]cid.Cid, error) {
 
 	for cur != nil {
 		link := cur.GetLink()
-		proof = append(proof, link)
+		index := cur.GetIndex()
+		proof = append(proof, ProofSegment{
+			node:  link,
+			index: index,
+		})
 		cur = cur.parent
 	}
 

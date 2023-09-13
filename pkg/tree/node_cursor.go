@@ -144,3 +144,7 @@ func (cur *Cursor) Equal(_cur *Cursor) bool {
 	}
 	return false
 }
+
+func (cur *Cursor) GetIndex() int {
+	return cur.idx
+}
