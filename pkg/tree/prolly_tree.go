@@ -26,9 +26,9 @@ type ProllyTree struct {
 // Segments in proving a key-value pair is in a tree
 type ProofSegment struct {
 	// Which node in the tree to perform the lookup on
-	node cid.Cid
+	Node cid.Cid
 	// Which index the key is in
-	index int
+	Index int
 }
 
 type Proof []ProofSegment
@@ -104,8 +104,8 @@ func (pt *ProllyTree) GetProof(key []byte) (Proof, error) {
 		link := cur.GetLink()
 		index := cur.GetIndex()
 		proof = append(proof, ProofSegment{
-			node:  link,
-			index: index,
+			Node:  link,
+			Index: index,
 		})
 		cur = cur.parent
 	}
