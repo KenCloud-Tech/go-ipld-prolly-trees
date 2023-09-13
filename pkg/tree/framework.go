@@ -499,6 +499,8 @@ func (fw *Framework) BuildTree(ctx context.Context) (*ProllyTree, cid.Cid, error
 
 	fw.builders = nil
 
+	prollyTree.treeCid = &treeCid
+
 	return prollyTree, treeCid, nil
 }
 

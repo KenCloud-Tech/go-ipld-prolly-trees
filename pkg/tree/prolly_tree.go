@@ -18,6 +18,7 @@ type ProllyTree struct {
 	root       ProllyNode
 	ns         NodeStore
 	treeConfig TreeConfig
+	treeCid    *cid.Cid
 
 	mutating  bool
 	mutations *Mutations
@@ -25,9 +26,12 @@ type ProllyTree struct {
 
 // Segments in proving a key-value pair is in a tree
 type ProofSegment struct {
-	// Which node in the tree to perform the lookup on
+	// Which TreeNode this key is in
+	// For last segment this should be the root CID
 	Node cid.Cid
-	// Which index the key is in
+	// Which index in the node the key is in
+	// For leaf nodes this is the value
+	// For non-leafs this is where the prev node was linked
 	Index int
 }
 
@@ -96,19 +100,28 @@ func (pt *ProllyTree) GetProof(key []byte) (Proof, error) {
 
 	proof := Proof{}
 
-	if cur.node.IsLeaf {
-		cur = cur.parent
+	// Only prove leaves
+	if !cur.node.IsLeaf {
+		return nil, KeyNotFound
 	}
 
-	for cur != nil {
-		link := cur.GetLink()
+	for cur.parent != nil {
 		index := cur.GetIndex()
+		link := cur.parent.GetLink()
+
 		proof = append(proof, ProofSegment{
 			Node:  link,
 			Index: index,
 		})
 		cur = cur.parent
 	}
+
+	index := cur.GetIndex()
+	proof = append(proof, ProofSegment{
+		Node:  *pt.treeCid,
+		Index: index,
+	})
+	// Get root tree node cid
 
 	return proof, nil
 }
@@ -329,6 +342,7 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	pt.root = newTree.root
 	pt.treeConfig = newTree.treeConfig
 	pt.ns = newTree.ns
+	pt.treeCid = newTree.treeCid
 
 	pt.mutating = false
 	pt.mutations = nil
@@ -402,6 +416,13 @@ func (pt *ProllyTree) TreeConfig() TreeConfig {
 
 func (pt *ProllyTree) TreeCount() uint32 {
 	return pt.root.totalPairCount()
+}
+
+func (pt *ProllyTree) TreeCid() (*cid.Cid, error) {
+	if pt.mutating {
+		return nil, fmt.Errorf("Cannot get tree cid while tree is being mutated. Apply changes with Rebuild first.")
+	}
+	return pt.treeCid, nil
 }
 
 // get the first(smallest) key of the tree
