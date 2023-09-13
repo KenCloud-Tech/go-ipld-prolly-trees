@@ -336,6 +336,62 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	return newTreeCid, nil
 }
 
+//func (pt *ProllyTree) Diff(other *ProllyTree) (*Mutations, error) {
+//	muts := NewMutations()
+//	otherConfig := other.TreeConfig()
+//	config := pt.TreeConfig()
+//	if !config.Equal(&otherConfig) {
+//		return nil, fmt.Errorf("diff between trees with different config is not allowed")
+//	}
+//	if pt.Root.Equals(other.Root) {
+//		return nil, nil
+//	}
+//	firstKeyBase, err := pt.FirstKey()
+//	if err != nil {
+//		return nil, err
+//	}
+//	curBase, err := CursorAtItem(&pt.root, firstKeyBase, DefaultCompareFunc, pt.ns)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	firstKeyOther, err := pt.FirstKey()
+//	if err != nil {
+//		return nil, err
+//	}
+//	curOther, err := CursorAtItem(&other.root, firstKeyOther, DefaultCompareFunc, other.ns)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	go func() {
+//		for {
+//			cmp := DefaultCompareFunc(curBase.GetKey(), curOther.GetKey())
+//			// We ignore keys in the base which are missing from the new tree
+//			if cmp < 0 {
+//				err = curBase.Advance()
+//				if err != nil {
+//					// todo: better error handling
+//					panic(err)
+//				}
+//				continue
+//			} else if cmp > 0 {
+//				err = muts.AddMutation(&Mutation{
+//					Key: curOther.GetKey(),
+//					Val: curOther.GetValue(),
+//					Op:  Add,
+//				})
+//				if err != nil {
+//					panic(err)
+//				}
+//			} else {
+//
+//				// todo: skip common
+//			}
+//		}
+//	}()
+//}
+
 func (pt *ProllyTree) NodeStore() NodeStore {
 	return pt.ns
 }
