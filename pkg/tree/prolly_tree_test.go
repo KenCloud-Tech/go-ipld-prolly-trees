@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
 	"math/rand"
@@ -294,6 +295,97 @@ func TestMergeTree(t *testing.T) {
 		num++
 	}
 	assert.Equal(t, num, count)
+}
+
+func TestMergeTreeWithLittleModitying(t *testing.T) {
+	ctx := context.Background()
+	count := 40000
+	testKeys, testVals := RandomTestData(count)
+	treeOne, _ := BuildTestTreeFromData(t, testKeys, testVals)
+	treeTwo, _ := BuildTestTreeFromData(t, testKeys, testVals)
+
+	testCid, _ := DefaultLinkProto.Sum([]byte("testlink"))
+	modifiedArray := []struct {
+		idx    int
+		key    []byte
+		oriVal ipld.Node
+		newVal ipld.Node
+	}{
+		{
+			10000,
+			testKeys[10000],
+			testVals[10000],
+			basicnode.NewFloat(1.52802),
+		},
+		{
+			10001,
+			testKeys[10001],
+			testVals[10001],
+			basicnode.NewBytes([]byte("hello")),
+		},
+		{
+			30000,
+			testKeys[30000],
+			testVals[30000],
+			basicnode.NewString("hello"),
+		},
+		{
+			30001,
+			testKeys[30001],
+			testVals[30001],
+			basicnode.NewBytes([]byte("thanks")),
+		},
+		{
+			idx:    39999,
+			key:    testKeys[39999],
+			oriVal: testVals[39999],
+			newVal: basicnode.NewLink(cidlink.Link{Cid: testCid}),
+		},
+	}
+
+	assert.NoError(t, treeTwo.Mutate())
+	var err error
+	for _, modified := range modifiedArray {
+		err = treeTwo.Put(ctx, modified.key, modified.newVal)
+		assert.NoError(t, err)
+	}
+	_, err = treeTwo.Rebuild(ctx)
+	assert.NoError(t, err)
+
+	err = treeOne.Merge(ctx, treeTwo)
+	assert.NoError(t, err)
+
+	assert.Equal(t, treeOne.TreeCount(), count)
+	for _, modified := range modifiedArray {
+		val, err := treeTwo.Get(modified.key)
+		assert.NoError(t, err)
+		assert.Equal(t, val, modified.newVal)
+	}
+
+	ns := treeTwo.ns
+	treeCid, err := ns.WriteTree(ctx, treeTwo, nil)
+	assert.NoError(t, err)
+	reTree, err := ns.ReadTree(ctx, treeCid)
+	assert.NoError(t, err)
+	for i := range testKeys {
+		skip := false
+		for _, modified := range modifiedArray {
+			if i == modified.idx {
+				val, err := reTree.Get(testKeys[i])
+				assert.NoError(t, err)
+				assert.Equal(t, val, modified.newVal)
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+		val, err := reTree.Get(testKeys[i])
+		assert.NoError(t, err)
+		assert.Equal(t, val, testVals[i])
+	}
+	assert.Equal(t, reTree.TreeCount(), count)
 }
 
 func TestPrefixCompare(t *testing.T) {

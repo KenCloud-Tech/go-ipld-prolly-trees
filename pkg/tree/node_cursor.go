@@ -221,39 +221,37 @@ func (cur *Cursor) SkipCommon(other *Cursor) error {
 			other.node = nd
 			other.idx = 0
 		}
-	} else {
-		// can not skip in higher level, advance together until:
-		// 1. either or both cursors invalid, return
-		// 2. differ , return
-		// 3. both arrive the start of new nodes, try skip in higher level, not return
-		for {
-			err = cur.Advance()
+	}
+
+	// can not skip in higher level, advance together until:
+	// 1. either or both cursors invalid, return
+	// 2. differ , return
+	// 3. both arrive the start of new nodes, try skip in higher level, not return
+	for {
+		err = cur.Advance()
+		if err != nil {
+			return err
+		}
+		err = other.Advance()
+		if err != nil {
+			return err
+		}
+		// either cursor arrives the end
+		if !cur.IsValid() || !other.IsValid() {
+			return nil
+		}
+		// cursors differ
+		if !cur.equalKeyValuePair(other) {
+			return nil
+		}
+		// try skip in higher level
+		if cur.isAtStart() && other.isAtStart() {
+			err = cur.SkipCommon(other)
 			if err != nil {
 				return err
-			}
-			err = other.Advance()
-			if err != nil {
-				return err
-			}
-			// either cursor arrives the end
-			if !cur.IsValid() || !other.IsValid() {
-				return nil
-			}
-			// cursors differ
-			if !cur.equalKeyValuePair(other) {
-				return nil
-			}
-			// try skip in higher level
-			if cur.isAtStart() && other.isAtStart() {
-				err = cur.SkipCommon(other)
-				if err != nil {
-					return err
-				}
 			}
 		}
 	}
-
-	panic("should not arrive here")
 }
 
 func (cur *Cursor) equalKeyValuePair(other *Cursor) bool {
