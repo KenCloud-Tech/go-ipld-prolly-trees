@@ -533,7 +533,7 @@ func (lb *LevelBuilder) appendToCursor(ctx context.Context, cur *Cursor) error {
 		if err != nil {
 			return err
 		}
-		if lcur.Compare(cur) == 0 {
+		if lcur.Compare(cur) >= 0 {
 			return nil
 		}
 
@@ -543,14 +543,22 @@ func (lb *LevelBuilder) appendToCursor(ctx context.Context, cur *Cursor) error {
 		}
 	}
 
+	// can not arrive the cursor
 	if lcur.parent == nil && cur.parent == nil {
-		return nil
+		panic("failed to append to the cursor")
 	} else if lcur.parent != nil && cur.parent != nil {
 		if lcur.parent.Equal(cur.parent) {
+			lcur.copy(cur)
 			return nil
 		}
 	} else {
 		return fmt.Errorf("two cursors has different height")
+	}
+
+	// advance parent because we just wrote new node at the old boundary
+	err = lcur.parent.Advance()
+	if err != nil {
+		return err
 	}
 
 	err = lb.parentBuilder.appendToCursor(ctx, cur.parent)
@@ -558,8 +566,7 @@ func (lb *LevelBuilder) appendToCursor(ctx context.Context, cur *Cursor) error {
 		return err
 	}
 
-	lb.cursor.node = cur.node
-	lb.cursor.idx = cur.idx
+	lcur.copy(cur)
 
 	err = lb.appendEntriesBeforeCursor(ctx)
 	if err != nil {

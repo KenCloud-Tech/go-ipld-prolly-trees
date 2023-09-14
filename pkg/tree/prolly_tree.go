@@ -1,6 +1,7 @@
 package tree
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -359,61 +360,141 @@ func (pt *ProllyTree) Rebuild(ctx context.Context) (cid.Cid, error) {
 	return newTreeCid, nil
 }
 
-//func (pt *ProllyTree) Diff(other *ProllyTree) (*Mutations, error) {
-//	muts := NewMutations()
-//	otherConfig := other.TreeConfig()
-//	config := pt.TreeConfig()
-//	if !config.Equal(&otherConfig) {
-//		return nil, fmt.Errorf("diff between trees with different config is not allowed")
-//	}
-//	if pt.Root.Equals(other.Root) {
-//		return nil, nil
-//	}
-//	firstKeyBase, err := pt.FirstKey()
-//	if err != nil {
-//		return nil, err
-//	}
-//	curBase, err := CursorAtItem(&pt.root, firstKeyBase, DefaultCompareFunc, pt.ns)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	firstKeyOther, err := pt.FirstKey()
-//	if err != nil {
-//		return nil, err
-//	}
-//	curOther, err := CursorAtItem(&other.root, firstKeyOther, DefaultCompareFunc, other.ns)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	go func() {
-//		for {
-//			cmp := DefaultCompareFunc(curBase.GetKey(), curOther.GetKey())
-//			// We ignore keys in the base which are missing from the new tree
-//			if cmp < 0 {
-//				err = curBase.Advance()
-//				if err != nil {
-//					// todo: better error handling
-//					panic(err)
-//				}
-//				continue
-//			} else if cmp > 0 {
-//				err = muts.AddMutation(&Mutation{
-//					Key: curOther.GetKey(),
-//					Val: curOther.GetValue(),
-//					Op:  Add,
-//				})
-//				if err != nil {
-//					panic(err)
-//				}
-//			} else {
-//
-//				// todo: skip common
-//			}
-//		}
-//	}()
-//}
+func (pt *ProllyTree) Diff(other *ProllyTree) (*Diffs, error) {
+	diffs := NewDiffs()
+	otherConfig := other.TreeConfig()
+	config := pt.TreeConfig()
+	if !config.Equal(&otherConfig) {
+		return nil, fmt.Errorf("diff between trees with different config is not allowed")
+	}
+	if pt.Root.Equals(other.Root) {
+		return nil, nil
+	}
+	firstKeyBase, err := pt.FirstKey()
+	if err != nil {
+		return nil, err
+	}
+	curBase, err := CursorAtItem(&pt.root, firstKeyBase, DefaultCompareFunc, pt.ns)
+	if err != nil {
+		return nil, err
+	}
+
+	firstKeyOther, err := pt.FirstKey()
+	if err != nil {
+		return nil, err
+	}
+	curOther, err := CursorAtItem(&other.root, firstKeyOther, DefaultCompareFunc, other.ns)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		defer diffs.Close()
+		for {
+			if !curBase.IsValid() {
+				if !curOther.IsValid() {
+					return
+				} else {
+					for curOther.IsValid() {
+						err = diffs.AddMutation(&Mutation{
+							Key: curOther.GetKey(),
+							Val: curOther.GetValue(),
+							Op:  Add,
+						})
+						if err != nil {
+							panic(err)
+						}
+						err = curOther.Advance()
+						if err != nil {
+							panic(err)
+						}
+					}
+				}
+			}
+			// if new tree cursor arrived end firstly, return(ignore delete option)
+			if !curOther.IsValid() {
+				return
+			}
+
+			cmp := DefaultCompareFunc(curBase.GetKey(), curOther.GetKey())
+			// ignore keys in the base which are missing from the new tree
+			if cmp < 0 {
+				err = curBase.Advance()
+				if err != nil {
+					// todo: better error handling
+					panic(err)
+				}
+				continue
+			} else if cmp > 0 {
+				err = diffs.AddMutation(&Mutation{
+					Key: curOther.GetKey(),
+					Val: curOther.GetValue(),
+					Op:  Add,
+				})
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				// if k/v pair equal, try skipping common parts
+				if bytes.Equal(EncodeNode(curBase.GetValue()), EncodeNode(curOther.GetValue())) {
+					err = curBase.SkipCommon(curOther)
+					if err != nil {
+						panic(err)
+					}
+				} else {
+					err = diffs.AddMutation(&Mutation{
+						Key: curOther.GetKey(),
+						Val: curOther.GetValue(),
+						Op:  Modify,
+					})
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+			err = curBase.Advance()
+			if err != nil {
+				panic(err)
+			}
+			err = curOther.Advance()
+			if err != nil {
+				panic(err)
+			}
+		}
+	}()
+
+	return diffs, nil
+}
+
+func (pt *ProllyTree) Merge(ctx context.Context, other *ProllyTree) error {
+	diffs, err := pt.Diff(other)
+	if err != nil {
+		return err
+	}
+	err = pt.Mutate()
+	if err != nil {
+		return err
+	}
+	for {
+		mut, err := diffs.NextMutations()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		if mut.Op == Add || mut.Op == Modify {
+			err = pt.Put(ctx, mut.Key, mut.Val)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("unsupported action now")
+		}
+	}
+	_, err = pt.Rebuild(ctx)
+	return err
+}
 
 func (pt *ProllyTree) NodeStore() NodeStore {
 	return pt.ns

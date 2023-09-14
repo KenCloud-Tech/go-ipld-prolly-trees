@@ -5,6 +5,11 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"io"
 	"sort"
+	"time"
+)
+
+const (
+	TimeOutLimit = time.Second * 100
 )
 
 type op int
@@ -119,4 +124,38 @@ func (m *Mutations) Get(item []byte) (ipld.Node, error) {
 	}
 
 	return nil, nil
+}
+
+type Diffs struct {
+	ch chan *Mutation
+}
+
+func NewDiffs() *Diffs {
+	return &Diffs{make(chan *Mutation, 10)}
+}
+
+func (d *Diffs) Close() error {
+	close(d.ch)
+	return nil
+}
+
+func (d *Diffs) AddMutation(mut *Mutation) error {
+	select {
+	case <-time.After(TimeOutLimit):
+		return fmt.Errorf("timeout")
+	case d.ch <- mut:
+		return nil
+	}
+}
+
+func (d *Diffs) NextMutations() (*Mutation, error) {
+	select {
+	case mut, ok := <-d.ch:
+		if !ok {
+			return nil, io.EOF
+		}
+		return mut, nil
+	case <-time.After(TimeOutLimit):
+		return nil, fmt.Errorf("timeout")
+	}
 }

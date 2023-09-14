@@ -232,6 +232,70 @@ func TestMutateSearch(t *testing.T) {
 	}
 }
 
+func TestMergeTree(t *testing.T) {
+	count := 20000
+	testKeys, testVals := RandomTestData(count)
+
+	var testKeyOne [][]byte
+	var testValOne []ipld.Node
+
+	var testKeyTwo [][]byte
+	var testValTwo []ipld.Node
+	for i := 0; i < count; i++ {
+		if i%2 == 0 {
+			testKeyOne = append(testKeyOne, testKeys[i])
+			testValOne = append(testValOne, testVals[i])
+		} else {
+			testKeyTwo = append(testKeyTwo, testKeys[i])
+			testValTwo = append(testValTwo, testVals[i])
+		}
+	}
+
+	treeOne, _ := BuildTestTreeFromData(t, testKeyOne, testValOne)
+	treeTwo, _ := BuildTestTreeFromData(t, testKeyTwo, testValTwo)
+
+	err := treeOne.Merge(context.Background(), treeTwo)
+	assert.NoError(t, err)
+
+	for i := 0; i < len(testKeyOne); i++ {
+		val, err := treeOne.Get(testKeyOne[i])
+		if err != nil {
+			t.Logf("%s\n", testKeyOne[i])
+			continue
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, val, testValOne[i])
+	}
+
+	for i := 0; i < len(testKeyTwo); i++ {
+		val, err := treeTwo.Get(testKeyTwo[i])
+		assert.NoError(t, err)
+		assert.Equal(t, val, testValTwo[i])
+	}
+
+	assert.Equal(t, int(treeOne.TreeCount()), count)
+	key, err := treeOne.FirstKey()
+	assert.NoError(t, err)
+	assert.Equal(t, key, testKeys[0])
+
+	key, err = treeOne.LastKey()
+	assert.NoError(t, err)
+	assert.Equal(t, key, testKeys[count-1])
+
+	iter, err := treeOne.Search(context.Background(), testKeys[0], testKeys[count-1])
+	assert.NoError(t, err)
+
+	num := 0
+	for !iter.Done() {
+		k, v, err := iter.NextPair()
+		assert.NoError(t, err)
+		assert.Equal(t, k, testKeys[num])
+		assert.Equal(t, v, testVals[num])
+		num++
+	}
+	assert.Equal(t, num, count)
+}
+
 func TestPrefixCompare(t *testing.T) {
 	prefixA := []byte("key1")
 	prefixB := []byte("key1a")

@@ -151,6 +151,24 @@ func (cur *Cursor) Equal(other *Cursor) bool {
 	return false
 }
 
+func (cur *Cursor) copy(other *Cursor) {
+	cur.node = other.node
+	cur.idx = other.idx
+	// is it must?
+	cur.ns = other.ns
+
+	if cur.parent != nil {
+		if other.parent == nil {
+			panic("can not copy from cursor with different height")
+		}
+		cur.parent.copy(other.parent)
+	} else {
+		if other.parent != nil {
+			panic("can not copy from cursor with different height")
+		}
+	}
+}
+
 func (cur *Cursor) SkipCommon(other *Cursor) error {
 	var err error
 	if !cur.equalKeyValuePair(other) {
@@ -239,10 +257,10 @@ func (cur *Cursor) SkipCommon(other *Cursor) error {
 }
 
 func (cur *Cursor) equalKeyValuePair(other *Cursor) bool {
-	if DefaultCompareFunc(cur.GetKey(), other.GetKey()) != 0 {
+	if !bytes.Equal(cur.GetKey(), other.GetKey()) {
 		return false
 	}
-	if DefaultCompareFunc(EncodeNode(cur.GetValue()), EncodeNode(other.GetValue())) != 0 {
+	if !bytes.Equal(EncodeNode(cur.GetValue()), EncodeNode(other.GetValue())) {
 		return false
 	}
 	return true
