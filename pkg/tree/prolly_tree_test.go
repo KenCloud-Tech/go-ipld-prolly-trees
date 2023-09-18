@@ -8,6 +8,7 @@ import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/zeebo/assert"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -301,8 +302,8 @@ func TestMergeTreeWithLittleModitying(t *testing.T) {
 	ctx := context.Background()
 	count := 40000
 	testKeys, testVals := RandomTestData(count)
-	treeOne, _ := BuildTestTreeFromData(t, testKeys, testVals)
-	treeTwo, _ := BuildTestTreeFromData(t, testKeys, testVals)
+	treeA, _ := BuildTestTreeFromData(t, testKeys, testVals)
+	treeB, _ := BuildTestTreeFromData(t, testKeys, testVals)
 
 	testCid, _ := DefaultLinkProto.Sum([]byte("testlink"))
 	modifiedArray := []struct {
@@ -343,27 +344,28 @@ func TestMergeTreeWithLittleModitying(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, treeTwo.Mutate())
+	assert.NoError(t, treeB.Mutate())
 	var err error
 	for _, modified := range modifiedArray {
-		err = treeTwo.Put(ctx, modified.key, modified.newVal)
+		err = treeB.Put(ctx, modified.key, modified.newVal)
 		assert.NoError(t, err)
 	}
-	_, err = treeTwo.Rebuild(ctx)
+	_, err = treeB.Rebuild(ctx)
 	assert.NoError(t, err)
 
-	err = treeOne.Merge(ctx, treeTwo)
+	err = treeA.Merge(ctx, treeB)
 	assert.NoError(t, err)
+	t.Logf("err is :%v", err)
 
-	assert.Equal(t, treeOne.TreeCount(), count)
+	assert.Equal(t, treeA.TreeCount(), count)
 	for _, modified := range modifiedArray {
-		val, err := treeTwo.Get(modified.key)
+		val, err := treeB.Get(modified.key)
 		assert.NoError(t, err)
 		assert.Equal(t, val, modified.newVal)
 	}
 
-	ns := treeTwo.ns
-	treeCid, err := ns.WriteTree(ctx, treeTwo, nil)
+	ns := treeB.ns
+	treeCid, err := ns.WriteTree(ctx, treeB, nil)
 	assert.NoError(t, err)
 	reTree, err := ns.ReadTree(ctx, treeCid)
 	assert.NoError(t, err)
@@ -386,6 +388,36 @@ func TestMergeTreeWithLittleModitying(t *testing.T) {
 		assert.Equal(t, val, testVals[i])
 	}
 	assert.Equal(t, reTree.TreeCount(), count)
+}
+
+func TestMergeTwoTreesWithDifferentConfig(t *testing.T) {
+	ctx := context.Background()
+	count := 10000
+	testKeysOne, testValsOne := RandomTestData(count)
+	testKeysTwo, testValsTwo := RandomTestData(count)
+	ns := TestMemNodeStore()
+	cfg := DefaultChunkConfig()
+	cfg.Strategy.Suffix.ChunkingFactor = 9
+	fw, err := NewFramework(ctx, ns, cfg, nil)
+	assert.NoError(t, err)
+
+	err = fw.AppendBatch(ctx, testKeysOne, testValsOne)
+	assert.NoError(t, err)
+	treeOne, _, err := fw.BuildTree(ctx)
+	assert.NoError(t, err)
+
+	cfg = DefaultChunkConfig()
+	cfg.Strategy.Suffix.ChunkingFactor = 8
+	fw, err = NewFramework(ctx, ns, cfg, nil)
+	assert.NoError(t, err)
+
+	err = fw.AppendBatch(ctx, testKeysTwo, testValsTwo)
+	assert.NoError(t, err)
+	treeTwo, _, err := fw.BuildTree(ctx)
+	assert.NoError(t, err)
+
+	err = treeOne.Merge(ctx, treeTwo)
+	assert.True(t, strings.Contains(err.Error(), "diff between trees with different config is not allowed"))
 }
 
 func TestPrefixCompare(t *testing.T) {
