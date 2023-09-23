@@ -379,7 +379,7 @@ func (pt *ProllyTree) Diff(other *ProllyTree) (*Diffs, error) {
 		return nil, err
 	}
 
-	firstKeyOther, err := pt.FirstKey()
+	firstKeyOther, err := other.FirstKey()
 	if err != nil {
 		return nil, err
 	}
