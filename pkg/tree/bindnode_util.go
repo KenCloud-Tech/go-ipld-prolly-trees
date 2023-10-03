@@ -108,3 +108,57 @@ func UnwrapChunkConfig(node ipld.Node) (*TreeConfig, error) {
 	}
 	return cfg, nil
 }
+
+func (ps *ProofSegment) ToNode() (nd ipld.Node, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = toError(r)
+		}
+	}()
+	nd = bindnode.Wrap(ps, ProofSegmentPrototype.Type()).Representation()
+	return
+}
+
+func UnwrapProofSegment(node ipld.Node) (*ProofSegment, error) {
+	if node.Prototype() != ProofSegmentPrototype {
+		psBuilder := ProofSegmentPrototype.NewBuilder()
+		err := psBuilder.AssignNode(node)
+		if err != nil {
+			return nil, fmt.Errorf("faild to convert node prototype: %w", err)
+		}
+		node = psBuilder.Build()
+	}
+
+	nd, ok := bindnode.Unwrap(node).(*ProofSegment)
+	if !ok || nd == nil {
+		return nil, fmt.Errorf("unwrapped node does not match schema.ProofSegment")
+	}
+	return nd, nil
+}
+
+func (pf *Proof) ToNode() (nd ipld.Node, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = toError(r)
+		}
+	}()
+	nd = bindnode.Wrap(pf, ProofPrototype.Type()).Representation()
+	return
+}
+
+func UnwrapProof(node ipld.Node) (*Proof, error) {
+	if node.Prototype() != ProofPrototype {
+		pfBuilder := ProofPrototype.NewBuilder()
+		err := pfBuilder.AssignNode(node)
+		if err != nil {
+			return nil, fmt.Errorf("faild to convert node prototype: %w", err)
+		}
+		node = pfBuilder.Build()
+	}
+
+	nd, ok := bindnode.Unwrap(node).(*Proof)
+	if !ok || nd == nil {
+		return nil, fmt.Errorf("unwrapped node does not match schema.Proof")
+	}
+	return nd, nil
+}

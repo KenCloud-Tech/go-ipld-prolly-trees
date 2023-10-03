@@ -37,3 +37,10 @@ type TreeConfig struct{
 type strategy union {
     | HashThresholdConfig     "hashThreshold"
 } representation keyed
+
+type Proof [ProofSegment]
+
+type ProofSegment struct{
+    Node &ProllyNode
+    Index Int
+}

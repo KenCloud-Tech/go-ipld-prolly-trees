@@ -32,3 +32,30 @@ func TestGenIPLDNode(t *testing.T) {
 	err = dagcbor.Encode(node, buf)
 	assert.NoError(t, err)
 }
+
+func TestGenProof(t *testing.T) {
+	cid1, _ := DefaultLinkProto.Sum([]byte("testdata1"))
+	ps := &ProofSegment{
+		Node:  cid1,
+		Index: 0,
+	}
+	n, err := ps.ToNode()
+	assert.NoError(t, err)
+	t.Log(n)
+
+	rePs, err := UnwrapProofSegment(n)
+	assert.NoError(t, err)
+	assert.Equal(t, rePs.Index, ps.Index)
+	assert.Equal(t, rePs.Node, ps.Node)
+
+	pf := Proof{*ps}
+
+	pn, err := pf.ToNode()
+	assert.NoError(t, err)
+	t.Logf("%#v", pn)
+
+	reProof, err := UnwrapProof(pn)
+	assert.NoError(t, err)
+	assert.Equal(t, (*reProof)[0].Node, cid1)
+	assert.Equal(t, (*reProof)[0].Index, 0)
+}

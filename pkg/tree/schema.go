@@ -17,6 +17,11 @@ var (
 	ChunkConfigPrototype schema.TypedPrototype
 
 	ProllyTreePrototype schema.TypedPrototype
+
+	ProofPrototype schema.TypedPrototype
+
+	ProofSegmentPrototype schema.TypedPrototype
+
 	//go:embed schema.ipldsch
 	schemaBytes []byte
 )
@@ -29,4 +34,6 @@ func init() {
 	ProllyNodePrototype = bindnode.Prototype(&ProllyNode{}, typeSystem.TypeByName("ProllyNode"))
 	ProllyTreePrototype = bindnode.Prototype(&ProllyRoot{}, typeSystem.TypeByName("ProllyRoot"))
 	ChunkConfigPrototype = bindnode.Prototype(&TreeConfig{}, typeSystem.TypeByName("TreeConfig"))
+	ProofSegmentPrototype = bindnode.Prototype(&ProofSegment{}, typeSystem.TypeByName("ProofSegment"))
+	ProofPrototype = bindnode.Prototype(&Proof{}, typeSystem.TypeByName("Proof"))
 }
