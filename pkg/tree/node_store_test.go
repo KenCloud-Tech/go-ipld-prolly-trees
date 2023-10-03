@@ -66,6 +66,23 @@ func TestNodeStoreLoad(t *testing.T) {
 	c, err = ns.WriteTreeConfig(ctx, cfg, nil)
 	assert.NoError(t, err)
 
+	cid1, _ := DefaultLinkProto.Sum([]byte("testdata1"))
+	cid2, _ := DefaultLinkProto.Sum([]byte("testdata2"))
+	ps1 := &ProofSegment{
+		Node:  cid1,
+		Index: 0,
+	}
+	ps2 := &ProofSegment{
+		Node:  cid2,
+		Index: 1,
+	}
+	prf := Proof{*ps1, *ps2}
+	c, err = ns.WriteProof(ctx, prf, nil)
+	assert.NoError(t, err)
+
+	rePrf, err := ns.ReadProof(ctx, c)
+	assert.NoError(t, err)
+	assert.Equal(t, prf, rePrf)
 }
 
 func TestCidPrefixAndEncoder(t *testing.T) {

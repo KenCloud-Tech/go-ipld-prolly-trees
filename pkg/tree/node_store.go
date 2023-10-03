@@ -25,6 +25,55 @@ type BlockNodeStore struct {
 	cache *lru.Cache
 }
 
+func (ns *BlockNodeStore) WriteProof(ctx context.Context, prf Proof, prefix *cid.Prefix) (cid.Cid, error) {
+	var linkProto cidlink.LinkPrototype
+	if prefix == nil {
+		// default linkproto
+		linkProto = DefaultLinkProto
+	} else {
+		linkProto = cidlink.LinkPrototype{Prefix: *prefix}
+	}
+	ipldNode, err := prf.ToNode()
+	if err != nil {
+		return cid.Undef, err
+	}
+	lnk, err := ns.lsys.Store(ipld.LinkContext{Ctx: ctx}, linkProto, ipldNode)
+	if err != nil {
+		return cid.Undef, err
+	}
+	c := lnk.(cidlink.Link).Cid
+
+	go func() {
+		if ns.cache != nil {
+			ns.cache.Add(c, prf)
+		}
+	}()
+
+	return c, nil
+}
+
+func (ns *BlockNodeStore) ReadProof(ctx context.Context, c cid.Cid) (Proof, error) {
+	var inCache bool
+	if ns.cache != nil {
+		var res interface{}
+		res, inCache = ns.cache.Get(c)
+		if inCache {
+			return res.(Proof), nil
+		}
+	}
+	nd, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, ProofPrototype.Representation())
+	if err != nil {
+		return nil, err
+	}
+
+	prf, err := UnwrapProof(nd)
+	if err != nil {
+		return nil, err
+	}
+
+	return *prf, nil
+}
+
 func (ns *BlockNodeStore) LinkSystem() *ipld.LinkSystem {
 	return ns.lsys
 }
@@ -198,6 +247,41 @@ var _ NodeStore = &LinkSystemNodeStore{}
 
 type LinkSystemNodeStore struct {
 	lsys *linking.LinkSystem
+}
+
+func (ns *LinkSystemNodeStore) WriteProof(ctx context.Context, prf Proof, prefix *cid.Prefix) (cid.Cid, error) {
+	var linkProto cidlink.LinkPrototype
+	if prefix == nil {
+		// default linkproto
+		linkProto = DefaultLinkProto
+	} else {
+		linkProto = cidlink.LinkPrototype{Prefix: *prefix}
+	}
+	ipldNode, err := prf.ToNode()
+	if err != nil {
+		return cid.Undef, err
+	}
+	lnk, err := ns.lsys.Store(ipld.LinkContext{Ctx: ctx}, linkProto, ipldNode)
+	if err != nil {
+		return cid.Undef, err
+	}
+	c := lnk.(cidlink.Link).Cid
+
+	return c, nil
+}
+
+func (ns *LinkSystemNodeStore) ReadProof(ctx context.Context, c cid.Cid) (Proof, error) {
+	nd, err := ns.lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: c}, ProofPrototype.Representation())
+	if err != nil {
+		return nil, err
+	}
+
+	prf, err := UnwrapProof(nd)
+	if err != nil {
+		return nil, err
+	}
+
+	return *prf, nil
 }
 
 func (ns *LinkSystemNodeStore) LinkSystem() *ipld.LinkSystem {

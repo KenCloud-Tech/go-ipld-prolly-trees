@@ -19,6 +19,9 @@ type NodeStore interface {
 	WriteTreeConfig(ctx context.Context, cfg *TreeConfig, prefix *cid.Prefix) (cid.Cid, error)
 	ReadTreeConfig(ctx context.Context, c cid.Cid) (*TreeConfig, error)
 
+	WriteProof(ctx context.Context, prf Proof, prefix *cid.Prefix) (cid.Cid, error)
+	ReadProof(ctx context.Context, c cid.Cid) (Proof, error)
+
 	LinkSystem() *ipld.LinkSystem
 
 	Close()
