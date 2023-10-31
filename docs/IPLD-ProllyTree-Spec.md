@@ -1,6 +1,6 @@
 # IPLD Prolly Tree Spec
 ## Summary
-IPLD Prolly Tree is a index module that is based on the ProllyTree and IPLD.It uses the ProllyTree algorithm(combination of B-Tree and Merkle Tree) but the storage and tree nodes are implemented by IPLD node and store.So IPLD ProllyTree has advantages that exit in IPLD and ProllyTree such as any IPLD node input, structure share,  low updating while tree mutating and so on.And it can be used as some database index such as Dolt, IPLD-Prolly-Indexer, or used in ADL. It’s powerful in some fields like fact diff, version control, It works really well for storing structured data with git-like semantic.
+IPLD Prolly Tree is a index module that is based on the ProllyTree and IPLD. It uses the ProllyTree algorithm(combination of B-Tree and Merkle Tree) but the storage and tree nodes are implemented using the IPLD suite of tools and specifications. IPLD ProllyTrees have advantages from both IPLD and ProllyTree such as supporting any IPLD node for values, deduplication, reducing the number of changed nodes when updating a tree, and more. It can be used as a database index similar to Dolt (via our IPLD-Prolly-Indexer library), or used as an ADL. It’s powerful in some fields like fact diff, version control, It works really well for storing structured data with git-like semantics.
 
 ## ProllyTree and IPLD
 ### Prolly-trees
