@@ -101,7 +101,7 @@ mutating  bool
 mutations *Mutations
 }
 ```
-ProllyTree is the core part in the project, it provides api for people to use the tree, it can also play the role as a package like in ADL, IPLD-Prolly-Indexer. The root node(ProllyNode) is the entry of the tree. When we need traverse the tree or some branch path in tree, we read the cidlink in node value and get relative node from NodeStore by cid.TreeConfig contains important information about the prollytree such as node size limit, hash function, cid version, codec and so on.It is set while building from framework.Mutations is used for tree mutating(updating), we won’t update for every mutating action such as putting(includes inserting and modifying), deleting.Mutations caches these actions then apply them while Rebuilding is called.
+ProllyTree is the core part in the project, it provides api for people to use the tree, it can also play the role as a package like in ADL, IPLD-Prolly-Indexer. The root node(ProllyNode) is the entry of the tree. When we need traverse the tree or some branch path in tree, we read the cidlink in node value and get relative node from NodeStore by cid.TreeConfig contains important information about the prollytree such as node size limit, hash function, cid version, codec and so on.It is set while building from framework.Mutations is used for tree mutating(updating), we won’t update for every mutating action such as putting(includes inserting and modifying), deleting. Mutations caches these actions then apply them when calling `Rebuild()`.
 
 ### ProllyNode
 ```golang
