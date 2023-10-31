@@ -87,7 +87,7 @@ type NodeStore interface {
 }
 ```
 
-NodeStore is an import module that saves almost all information and data of ProllyTree. It is used anywhere in the project such as tree building, updating, getting…… We can also read the saved tree before. The nodestore we use in the project is based on the blockstore(ipfs)
+NodeStore is an important module that saves almost all information and data of ProllyTree. It is used anywhere in the project such as tree building, updating, getting, etc. It can also read previously saved tree nodes. The nodestore we use in the project is based on the IPFS blockstore interface.
 ### ProllyTree
 ```golang
 type ProllyTree struct {
