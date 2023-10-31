@@ -1,9 +1,12 @@
+# IPLD Prolly Tree Spec  
+## Summary  
+IPLD Prolly Tree is a index module that is based on the ProllyTree and IPLD.It uses the ProllyTree algorithm(combination of B-Tree and Merkle Tree) but the storage and tree nodes are implemented by IPLD node and store.So IPLD ProllyTree has advantages that exit in IPLD and ProllyTree such as any IPLD node input, structure share,  low updating while tree mutating and so on.And it can be used as some database index such as Dolt, IPLD-Prolly-Indexer, or used in ADL. It’s powerful in some fields like fact diff, version control, It works really well for storing structured data with git-like semantic.
 # IPLD Prolly Tree Spec
 ## Summary
 IPLD Prolly Tree is a index module that is based on the ProllyTree and IPLD. It uses the ProllyTree algorithm(combination of B-Tree and Merkle Tree) but the storage and tree nodes are implemented using the IPLD suite of tools and specifications. IPLD ProllyTrees have advantages from both IPLD and ProllyTree such as supporting any IPLD node for values, deduplication, reducing the number of changed nodes when updating a tree, and more. It can be used as a database index similar to Dolt (via our IPLD-Prolly-Indexer library), or used as an ADL. It’s powerful in some fields like fact diff, version control, It works really well for storing structured data with git-like semantics.
 
-## ProllyTree and IPLD
-### Prolly-trees
+## ProllyTree and IPLD  
+### Prolly-trees  
 A Prolly-tree is a little like a complete B-tree, but blended with ideas that come from storage algorithms for file sharing and distributed version control systems. A Prolly-tree stores all key-value data in leaf nodes, exactly like a B-tree, and internal nodes with key delimiters and children pointers, exactly like a B-tree. But both the leaf nodes and the internal nodes are variable-length and content-addressed. The children pointers within the internal nodes are the content addresses of the leaf or internal blocks that they point to.
 The trick is to pick block boundaries that give us lots of structural sharing. Intuitively, if we have a map<Date, Float> of all the temperatures in Los Angeles for the months of Jan, Feb, April, and May of the year 2019, we want almost no blocks to change when we do any of the following:
 - Insert all temperatures for the year 2018.
@@ -37,7 +40,7 @@ Perhaps the easiest way to conceptualize the end result of building a prolly tre
 ![img5](./images/spec/img_5.png)
 
 If you place those pairs one after another into a single byte[], you now have a byte stream that can to be turned into content-address blocks to form a layer of internal blocks of your Prolly-tree. To do so, goto step #2. The algorithm terminates when step #4's condition is reached.
-### Properties of the Prolly-tree
+### Properties of the Prolly-tree  
 So what can we do with the Prolly-tree given the content addressing and structural sharing?
 - The Prolly-tree for a map<byte[], byte[]> value forms a merkle tree. We can verify the content addresses of every block, and we have efficient structural sharing without trust issues regarding the contents of the block data itself.
 - We have efficient recursive diff between two values. If the content address of two nodes are different, then at least some of the values in the children of that node are different. By comparing content addresses at every layer of the tree, you can quickly walk to just the parts that are different.
@@ -47,10 +50,11 @@ While the Prolly-tree gives us a lot of nice things, this structure isn't withou
 - Variable length blocks are typically not as efficient as an optimally sized fixed-size block for I/O subsystems, allocators, etc.
 - While small changes to a block often don't affect block boundaries, they do change existing boundaries sometimes. ProllyTree necessarily writes more blocks than even a copy-on-write B-tree implementation.
 - Going through a content-address for internal node pointers means going through another index to find the actual block data. We can't embed pointers in internal nodes within node store that allow a direct I/O for the next needed piece of data. While indexes for locating blocks by their addresses can be made quite fast, they're never as fast as having a file offset to a fixed size block directly in hand after reading the internal node, for example.
-### IPLD
+### IPLD  
+
 IPLD is the data model of the content-addressable web. It allows us to treat all hash-linked data structures as subsets of a unified information space, unifying all data models that link data with hashes as instances of IPLD. In the project(IPLD ProllyTree) we use [IPLD node](https://ipld.io/docs/data-model/node/)(bindnode), [IPLD schema](https://ipld.io/docs/schemas/) and [IPLD ADL](https://ipld.io/docs/advanced-data-layouts/)(Advanced Data Layouts)
 
-## Architecture
+## Architecture  
 
 ![img6](./images/spec/img_6.png)
 
@@ -64,8 +68,9 @@ Framework is used for tree building. We input sorted data into the framework the
 
 IPLD ProllyTree implemented the IPLD ADL(Advanced Data Layout) interface based on above structures. It includes ProllyTreeADLPrototype, Builder, TreeAssembler(MapAssembler) and ADL Node. It helps people who want to build large map(dict) by ProllyTree with ADL in IPLD world.
 
-## Modules
-### Storge(NodeStore)
+## Modules  
+
+### Storge(NodeStore)  
 
 ```golang
 type NodeStore interface {
@@ -88,22 +93,24 @@ type NodeStore interface {
 ```
 
 NodeStore is an important module that saves almost all information and data of ProllyTree. It is used anywhere in the project such as tree building, updating, getting, etc. It can also read previously saved tree nodes. The nodestore we use in the project is based on the IPFS blockstore interface.
-### ProllyTree
+### ProllyTree  
+
 ```golang
 type ProllyTree struct {
-ProllyRoot
-root       ProllyNode
-ns         NodeStore
-treeConfig TreeConfig
-treeCid    *cid.Cid
-
-mutating  bool
-mutations *Mutations
+	ProllyRoot
+	root       ProllyNode
+	ns         NodeStore
+	treeConfig TreeConfig
+	treeCid    *cid.Cid
+	mutating  bool
+	mutations *Mutations
 }
 ```
+
 ProllyTree is the core part in the project, it provides api for people to use the tree, it can also play the role as a package like in ADL, IPLD-Prolly-Indexer. The root node(ProllyNode) is the entry of the tree. When we need traverse the tree or some branch path in tree, we read the cidlink in node value and get relative node from NodeStore by cid.TreeConfig contains important information about the prollytree such as node size limit, hash function, cid version, codec and so on.It is set while building from framework.Mutations is used for tree mutating(updating), we won’t update for every mutating action such as putting(includes inserting and modifying), deleting. Mutations caches these actions then apply them when calling `Rebuild()`.
 
-### ProllyNode
+### ProllyNode  
+
 ```golang
 type ProllyNode struct {
 IsLeaf       bool
@@ -112,9 +119,11 @@ Values       []ipld.Node
 SubtreeCount []uint32
 }
 ```
+
 ProllyNode is the base role in ProllyTree, it includes key/value pairs and total subtree count(how many raw key/value pairs in the subtree).IsLeaf means whether the node is a leaf node.Root ProllyNode is saved in ProllyTree as entry for travel.
 
-### IPLD schema of ProllyNode
+### IPLD schema of ProllyNode  
+
 ```txt
 type ProllyNode struct {
 # true for leaf nodes and false for branch nodes
@@ -127,7 +136,8 @@ subtreeCount [Int]
 } representation tuple
 ```
 
-### Framework
+### Framework  
+
 ```golang
 type Framework struct {
 done      bool
@@ -137,9 +147,11 @@ configCid cid.Cid
 builders  []*LevelBuilder
 }
 ```
+
 Framework is used while tree building or rebuilding(updating), it received raw data(sorted k/v pairs) and generates tree nodes and links them. It also contains some meta information about the tree building such as tree config(cid), cid prefix(standard of the cid saved in ProllyNode values). Builders are used to build the ProllyTree level by level.NodeCoder is to limit the generated Node size(tree config limits the node content size)
 
-### Splitter
+### Splitter  
+
 ```golang
 type Splitter interface {
 // IsBoundary returns whether boundary generated at current location
@@ -150,7 +162,8 @@ Reset()
 ```
 Whether a boundary generated is determined by the Splitter. It’s initialized with the hash function and some node config such as NodeMaxSize, NodeMinSize, MaxPairsInNode and so on.Splitter received every k/v pair and put into the computation to judge whether meet the condition to generate new ProllyNode, it resets after new ProllyNode generated.
 
-### TreeConfig
+### TreeConfig  
+
 ```golang
 type TreeConfig struct {
 MinNodeSize    int
@@ -166,33 +179,41 @@ Strategy     strategy
 }
 ```
 
-### StrategyType
+### StrategyType  
+
 The enum for the types of chunking strategies that are part of the spec. This is set to be a byte so that the number of strategies can grow over time.
 
-### Strategy
+### Strategy  
+
 Chunk Config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about the splitter
 
-### MinNodeSize
+### MinNodeSize  
+
 The minimum size a chunk should be before considering the boundry function.
 
-### MaxNodeSize
+### MaxNodeSize  
+
 The maximum size a chunk could be before it needs to be split regardless of the chunk boundaries
 
-### PrefixThresholdConfig
+### PrefixThresholdConfig  
+
 Config for the PrefixThreshold chunking strategy.
 This is the original strategy that was described in the Merkle Search Tree paper and has a chunkingFactor which represents the number of bits in the key which need to be 0 in order to set another boundry.
 Lower values result in wider nodes.
 
-### WeibullThresholdConfig
+### WeibullThresholdConfig  
+
 Config for the WeiBullThreshold chunking strategy.
 Makes chunk boundary decisions on the hash of the key of a []byte pair and tries to create chunks that have an average number of []byte pairs, rather than an average number of Bytes. However, because the target number of []byte pairs is computed directly from the chunk size and count, the practical difference in the distribution of chunk sizes is minimal. It uses a dynamic threshold modeled on a weibull distribution (https://en.wikipedia.org/wiki/Weibull_distribution). As the size of the current trunk increases, it becomes easier to pass the threshold, reducing the likelihood of forming very large or very small chunks.
 The K value represents the Shape Parameter, and L represents λ - the scaling factor.
 
-### RollingHashConfig
+### RollingHashConfig  
+
 rollingHashSplitter is a nodeSplitter that makes chunk boundary decisions using a rolling value hasher that processes Item pairs in a byte-wise fashion.
 rollingHashSplitter uses a dynamic hash pattern designed to constrain the chunk Size distribution by reducing the likelihood of forming very large or very small chunks. As the Size of the current chunk grows, rollingHashSplitter changes the target pattern to make it easier to match. The result is a chunk Size distribution that is closer to a binomial distribution, rather than geometric.
 
-### Cursor
+### Cursor  
+
 ```golang
 type Cursor struct {
 node   *ProllyNode
@@ -203,29 +224,30 @@ parent *Cursor
 ```
 Cursor is very important and it is used in most ProllyTree api, it’s similar to the traditional database cursor. Whatever find a pair by the key or rebuild the ProllyTree, it is a must to locate the element we want, when we find a key in a node it is using the binary search in fact.
 
-## API
-### `func (pt *ProllyTree) Get(key []byte) (ipld.Node, error)`
+## API  
+
+### `func (pt *ProllyTree) Get(key []byte) (ipld.Node, error)`  
 Get the value(IPLD node) by the key from the ProllyTree
 
-### `func (pt *ProllyTree) GetProof(key []byte) (Proof, error)`
+### `func (pt *ProllyTree) GetProof(key []byte) (Proof, error)`  
 Get the proof(merkle path) of the pair by the key
 
-### `func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*Iterator, error)`
+### `func (pt *ProllyTree) Search(ctx context.Context, start []byte, end []byte) (*Iterator, error)`  
 Range search, input the start and end key(keys order is decided by the default bytes compare) then return the iterator, read the result by Next() or NextPair() like the channel, if arrive the end, the io.EOF error will be returned
 
-### `func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error`
+### `func (pt *ProllyTree) Put(ctx context.Context, key []byte, val ipld.Node) error`  
 Put a pair into the ProllyTree(cached in mutations), if the key has existed, its val will be replaced, if not we add the new pair.
 
-### `func (pt *ProllyTree) Delete(ctx context.Context, key []byte) error`
+### `func (pt *ProllyTree) Delete(ctx context.Context, key []byte) error`  
 Delete the pair by the key(cached in mutations), if the key not existed, won’t return the error
 
-### `func (pt *ProllyTree) Diff(other *ProllyTree) (*Diffs, error)`
+### `func (pt *ProllyTree) Diff(other *ProllyTree) (*Diffs, error)`  
 Compare two ProllyTrees then return the diffs from smallest different key/val pair, but we ignore the deleted pairs in the other ProllyTree. i.e. The pairs existed in original ProllyTree but not in other won’t be returned in Diffs, only new or modified pairs are returned. In addition, we skip most common part by comparing the cid of node.
 
-### `func (pt *ProllyTree) Merge(ctx context.Context, other *ProllyTree) error`
+### `func (pt *ProllyTree) Merge(ctx context.Context, other *ProllyTree) error`  
 Merge two ProllyTrees and modify the original ProllyTree as result, this function will call Diff then apply the mutations from Diff, so in fact we get the new pairs(not existed in original tree) and modified pairs(key is the same but val differ) and apply them in the original ProllyTree, the other ProllyTree is not changed.
 
-## Algorithm and Workflow
+## Algorithm and Workflow  
 If we want to insert k8:v8(bigger number means the key is bigger(default bytes compare)) to a ProllyTree
 
 ![img9](./images/spec/img_9.png)
