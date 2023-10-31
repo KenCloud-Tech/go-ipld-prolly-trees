@@ -62,7 +62,7 @@ Framework is used for tree building. We input sorted data into the framework the
 
 ![img8](./images/spec/img_8.png)
 
-IPLD ProllyTree implemented the IPLD ADL(Advanced Layout) interface based on above structures.It includes ProllyTreeADLPrototype, Builder, TreeAssembler(MapAssembler) and ADL Node. It helps people who want to build large map(dict) by ProllyTree with ADL in IPLD world.
+IPLD ProllyTree implemented the IPLD ADL(Advanced Data Layout) interface based on above structures. It includes ProllyTreeADLPrototype, Builder, TreeAssembler(MapAssembler) and ADL Node. It helps people who want to build large map(dict) by ProllyTree with ADL in IPLD world.
 
 ## Modules
 ### Storge(NodeStore)
