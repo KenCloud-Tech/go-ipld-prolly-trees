@@ -1,0 +1,46 @@
+type ProllyNode struct {
+    # true for leaf nodes and false for branch nodes
+    isLeaf Bool
+    # raw keys(input from users) for leaf node. For branch node, the key is last key in the child node
+	keys [Bytes]
+	# input data from users for leaf nodes, link(cid) for branch nodes
+    values [Any]
+    subtreeCount [Int]
+} representation tuple
+
+type ProllyRoot struct{
+    # config about the tree
+    Config &TreeConfig
+    # root ProllyNode of tree
+    Root &ProllyNode
+} representation tuple
+
+type HashThresholdConfig struct {
+    chunkingFactor Int
+    hashFunction Int
+} representation tuple
+
+# Tree Config for prolly tree, it includes some global setting, the splitter method you choose and specific configs about
+# the splitter
+type TreeConfig struct{
+    minNodeSize     Int
+    maxNodeSize     Int
+    maxPairsInNode  Int
+    cidVersion Int
+    codec Int
+    hashFunction Int
+    hashLength nullable Int
+    strategyType    Int
+    strategy        strategy
+} representation tuple
+
+type strategy union {
+    | HashThresholdConfig     "hashThreshold"
+} representation keyed
+
+type Proof [ProofSegment]
+
+type ProofSegment struct{
+    Node &ProllyNode
+    Index Int
+}
